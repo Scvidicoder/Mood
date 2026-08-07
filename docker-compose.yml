@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: moodpickup-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-moodpickup}
+      POSTGRES_USER: ${POSTGRES_USER:-moodpickup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodpickup_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - moodpickup-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-moodpickup} -d ${POSTGRES_DB:-moodpickup}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend/MoodPickup.Api
+      dockerfile: Dockerfile
+    container_name: moodpickup-backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB:-moodpickup};Username=${POSTGRES_USER:-moodpickup};Password=${POSTGRES_PASSWORD:-moodpickup_dev}
+      AllowedOrigins: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      Database__ApplyMigrationsOnStartup: ${DATABASE_APPLY_MIGRATIONS_ON_STARTUP:-true}
+      Jwt__Issuer: ${JWT_ISSUER:-MoodPickup}
+      Jwt__Audience: ${JWT_AUDIENCE:-MoodPickup.Client}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-moodpickup-development-signing-key-change-before-production-2026}
+      Jwt__AccessTokenLifetimeMinutes: ${JWT_ACCESS_TOKEN_LIFETIME_MINUTES:-15}
+      Jwt__RegistrationTokenLifetimeMinutes: ${JWT_REGISTRATION_TOKEN_LIFETIME_MINUTES:-10}
+      Otp__HashKey: ${OTP_HASH_KEY:-moodpickup-development-otp-hash-key-change-before-production-2026}
+      Telegram__Enabled: ${TELEGRAM_ENABLED:-false}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-mood_pickup_bot}
+      Telegram__WebhookSecret: ${TELEGRAM_WEBHOOK_SECRET:-}
+      Telegram__PublicBaseUrl: ${TELEGRAM_PUBLIC_BASE_URL:-}
+      Telegram__WebhookPath: ${TELEGRAM_WEBHOOK_PATH:-/api/v1/telegram/webhook}
+      Telegram__RegisterWebhookOnStartup: ${TELEGRAM_REGISTER_WEBHOOK_ON_STARTUP:-false}
+      Telegram__DropPendingUpdatesOnRegistration: ${TELEGRAM_DROP_PENDING_UPDATES_ON_REGISTRATION:-false}
+      Telegram__UseDevelopmentSender: ${TELEGRAM_USE_DEVELOPMENT_SENDER:-true}
+      RefreshToken__CustomerLifetimeDays: ${CUSTOMER_REFRESH_TOKEN_LIFETIME_DAYS:-30}
+      RefreshToken__EmployeeLifetimeDays: ${EMPLOYEE_REFRESH_TOKEN_LIFETIME_DAYS:-30}
+      PasswordPolicy__AdditionalCommonPasswords__0: ${ADDITIONAL_COMMON_PASSWORD:-}
+      MediaStorage__Provider: ${MEDIA_STORAGE_PROVIDER:-Local}
+      MediaStorage__RootPath: ${MEDIA_ROOT_PATH:-uploads}
+      MediaStorage__PublicBasePath: ${MEDIA_PUBLIC_BASE_PATH:-/media}
+      MediaStorage__MaximumFileSizeBytes: ${MEDIA_MAXIMUM_FILE_SIZE_BYTES:-5242880}
+      MediaStorage__MaximumImageWidth: ${MEDIA_MAXIMUM_IMAGE_WIDTH:-6000}
+      MediaStorage__MaximumImageHeight: ${MEDIA_MAXIMUM_IMAGE_HEIGHT:-6000}
+      MediaStorage__MaximumDecodedImageBytes: ${MEDIA_MAXIMUM_DECODED_IMAGE_BYTES:-268435456}
+      AdministratorSeed__Enabled: ${ADMIN_SEED_ENABLED:-true}
+      AdministratorSeed__Username: ${ADMIN_USERNAME:-admin}
+      AdministratorSeed__Password: ${ADMIN_PASSWORD:-ChangeThisDev1!}
+      AdministratorSeed__FullName: ${ADMIN_FULL_NAME:-Development Administrator}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - moodpickup-media:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api/v1}
+        VITE_SIGNALR_URL: ${VITE_SIGNALR_URL:-http://localhost:8080/hubs/notifications}
+        VITE_CSRF_COOKIE_NAME: ${VITE_CSRF_COOKIE_NAME:-__Secure-MoodPickup.Csrf}
+        VITE_CSRF_HEADER_NAME: ${VITE_CSRF_HEADER_NAME:-X-CSRF-TOKEN}
+    container_name: moodpickup-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  moodpickup-postgres-data:
+  moodpickup-media:
