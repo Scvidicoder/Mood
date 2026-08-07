@@ -65,7 +65,7 @@ fallback and Sprint 2 explicitly prohibits upgrading to .NET 9.
 ## Full startup with Docker Compose
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item  .env
 docker compose up --build
 ```
 
