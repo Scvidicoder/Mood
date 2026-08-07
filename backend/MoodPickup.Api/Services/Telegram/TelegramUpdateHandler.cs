@@ -133,6 +133,9 @@ public sealed partial class TelegramUpdateHandler(
         var limit = abuseLimiter.ConsumeStartAttempt(sender.Id);
         if (limit == TelegramLimitResult.Blocked)
         {
+            logger.LogWarning(
+                "Telegram /start attempt was blocked for Telegram user {TelegramUserId}.",
+                sender.Id);
             return;
         }
         if (limit == TelegramLimitResult.LimitReached)

@@ -140,9 +140,14 @@ public sealed class TelegramAuthenticationIntegrationTests(
 
         Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
         var contactRequest = Assert.Single(factory.BotClient.Messages);
-        var keyboard = Assert.IsType<TelegramReplyKeyboardMarkup>(
+        var keyboard = Assert.IsType<JsonElement>(
             contactRequest.ReplyMarkup);
-        Assert.True(keyboard.Keyboard.Single().Single().RequestContact);
+        Assert.Equal(JsonValueKind.Object, keyboard.ValueKind);
+        Assert.True(
+            keyboard
+                .GetProperty("keyboard")[0][0]
+                .GetProperty("request_contact")
+                .GetBoolean());
 
         var contactUpdate = ContactUpdate(
             1002,

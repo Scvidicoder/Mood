@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace MoodPickup.Api.DTOs.Telegram;
@@ -48,7 +49,23 @@ public sealed record TelegramSetWebhookRequest(
 public sealed record TelegramSendMessageRequest(
     [property: JsonPropertyName("chat_id")] long ChatId,
     [property: JsonPropertyName("text")] string Text,
-    [property: JsonPropertyName("reply_markup")] object? ReplyMarkup = null);
+    [property: JsonPropertyName("reply_markup")] JsonElement? ReplyMarkup = null)
+{
+    public TelegramSendMessageRequest(
+        long chatId,
+        string text,
+        object? replyMarkup)
+        : this(
+            chatId,
+            text,
+            replyMarkup is null
+                ? null
+                : JsonSerializer.SerializeToElement(
+                    replyMarkup,
+                    TelegramJson.Options))
+    {
+    }
+}
 
 public sealed record TelegramReplyKeyboardMarkup(
     [property: JsonPropertyName("keyboard")] IReadOnlyCollection<IReadOnlyCollection<TelegramKeyboardButton>> Keyboard,
@@ -64,3 +81,12 @@ public sealed record TelegramReplyKeyboardRemove(
 
 public sealed record TelegramSentMessageDto(
     [property: JsonPropertyName("message_id")] long MessageId);
+
+public static class TelegramJson
+{
+    public static readonly JsonSerializerOptions Options =
+        new(JsonSerializerDefaults.Web)
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+}

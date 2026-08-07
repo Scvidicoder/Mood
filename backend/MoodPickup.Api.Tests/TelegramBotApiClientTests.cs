@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MoodPickup.Api.DTOs.Telegram;
@@ -64,6 +65,92 @@ public sealed class TelegramBotApiClientTests
             "\"allowed_updates\":[\"message\"]",
             capturedBody,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SendMessage_SerializesContactKeyboardAsReplyMarkupObject()
+    {
+        string? capturedBody = null;
+        var client = CreateClient(async request =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync();
+            return JsonResponse(
+                """
+                {"ok":true,"result":{"message_id":1}}
+                """);
+        });
+        var keyboard = new TelegramReplyKeyboardMarkup(
+            [
+                [
+                    new TelegramKeyboardButton(
+                        "Share contact",
+                        RequestContact: true)
+                ]
+            ]);
+
+        await client.SendMessageAsync(
+            new TelegramSendMessageRequest(
+                123456789,
+                "Share your phone number",
+                keyboard),
+            CancellationToken.None);
+
+        using var document = JsonDocument.Parse(capturedBody!);
+        var root = document.RootElement;
+        var replyMarkup = root.GetProperty("reply_markup");
+        var button = replyMarkup
+            .GetProperty("keyboard")[0][0];
+
+        Assert.Equal(JsonValueKind.Object, replyMarkup.ValueKind);
+        Assert.Equal("Share contact", button.GetProperty("text").GetString());
+        Assert.True(button.GetProperty("request_contact").GetBoolean());
+        Assert.True(replyMarkup.GetProperty("resize_keyboard").GetBoolean());
+        Assert.True(replyMarkup.GetProperty("one_time_keyboard").GetBoolean());
+    }
+
+    [Fact]
+    public async Task SendMessage_OmitsReplyMarkupWhenNoMarkupWasProvided()
+    {
+        string? capturedBody = null;
+        var client = CreateClient(async request =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync();
+            return JsonResponse("""{"ok":true,"result":{"message_id":1}}""");
+        });
+
+        await client.SendMessageAsync(
+            new TelegramSendMessageRequest(123456789, "Hello"),
+            CancellationToken.None);
+
+        using var document = JsonDocument.Parse(capturedBody!);
+        Assert.False(document.RootElement.TryGetProperty("reply_markup", out _));
+    }
+
+    [Fact]
+    public async Task SendMessage_SerializesPlainReplyKeyboardAsObject()
+    {
+        string? capturedBody = null;
+        var client = CreateClient(async request =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync();
+            return JsonResponse("""{"ok":true,"result":{"message_id":1}}""");
+        });
+        var keyboard = new TelegramReplyKeyboardMarkup(
+            [[new TelegramKeyboardButton("Continue", RequestContact: false)]]);
+
+        await client.SendMessageAsync(
+            new TelegramSendMessageRequest(123456789, "Continue", keyboard),
+            CancellationToken.None);
+
+        using var document = JsonDocument.Parse(capturedBody!);
+        var replyMarkup = document.RootElement.GetProperty("reply_markup");
+
+        Assert.Equal(JsonValueKind.Object, replyMarkup.ValueKind);
+        Assert.False(
+            replyMarkup
+                .GetProperty("keyboard")[0][0]
+                .GetProperty("request_contact")
+                .GetBoolean());
     }
 
     [Fact]

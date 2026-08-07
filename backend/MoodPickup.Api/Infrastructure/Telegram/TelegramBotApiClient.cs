@@ -13,9 +13,6 @@ public sealed class TelegramBotApiClient(
     IOptions<TelegramOptions> options,
     ILogger<TelegramBotApiClient> logger) : ITelegramBotClient
 {
-    private static readonly JsonSerializerOptions SerializerOptions =
-        new(JsonSerializerDefaults.Web);
-
     private readonly TelegramOptions _options = options.Value;
 
     public Task<TelegramUserDto> GetMeAsync(CancellationToken cancellationToken)
@@ -70,15 +67,18 @@ public sealed class TelegramBotApiClient(
         {
             using var response = request is null
                 ? await httpClient.GetAsync(BuildMethodPath(methodName), cancellationToken)
-                : await httpClient.PostAsJsonAsync(
+                : await httpClient.PostAsync(
                     BuildMethodPath(methodName),
-                    request,
-                    SerializerOptions,
+                    JsonContent.Create(
+                        request,
+                        request.GetType(),
+                        mediaType: null,
+                        TelegramJson.Options),
                     cancellationToken);
 
             var envelope = await response.Content
                 .ReadFromJsonAsync<TelegramApiEnvelope<T>>(
-                    SerializerOptions,
+                    TelegramJson.Options,
                     cancellationToken);
             if (response.IsSuccessStatusCode &&
                 envelope is { Ok: true, Result: not null })
