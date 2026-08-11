@@ -2,13 +2,25 @@ import type { PagedResponse } from "./menu";
 
 export type PaymentMethod = "PayOnPickup" | "Online";
 
+export type PaymentMethodUsed = "Cash" | "Card";
+
 export type PickupMode = "AsSoonAsPossible" | "Scheduled";
 
 export type OrderStatus =
   | "PendingConfirmation"
   | "Confirmed"
+  | "Preparing"
+  | "ReadyForPickup"
+  | "Completed"
   | "Cancelled"
   | "Rejected";
+
+export interface OrderStatusHistory {
+  oldStatus?: OrderStatus;
+  newStatus: OrderStatus;
+  timestamp: string;
+  reason?: string;
+}
 
 export interface CreateOrderItemInput {
   productId: string;
@@ -63,6 +75,12 @@ export interface OrderDetail {
   createdAt: string;
   estimatedReadyAt?: string;
   rejectReason?: string;
+  preparationStartedAt?: string;
+  readyAt?: string;
+  completedAt?: string;
+  paymentReceived: boolean;
+  paymentMethodUsed?: PaymentMethodUsed;
+  statusHistory: OrderStatusHistory[];
   items: OrderItem[];
 }
 
@@ -79,6 +97,11 @@ export interface OrderSummary {
   createdAt: string;
   estimatedReadyAt?: string;
   rejectReason?: string;
+  preparationStartedAt?: string;
+  readyAt?: string;
+  completedAt?: string;
+  paymentReceived: boolean;
+  paymentMethodUsed?: PaymentMethodUsed;
 }
 
 export type CustomerOrdersPage = PagedResponse<OrderSummary>;
@@ -97,6 +120,11 @@ export interface StaffOrderSummary {
   comment?: string;
   status: OrderStatus;
   estimatedReadyAt?: string;
+  preparationStartedAt?: string;
+  readyAt?: string;
+  completedAt?: string;
+  paymentReceived: boolean;
+  paymentMethodUsed?: PaymentMethodUsed;
   itemQuantity: number;
   rowVersion: string;
 }
@@ -107,6 +135,7 @@ export interface StaffOrderDetail extends StaffOrderSummary {
   discountTotal: number;
   confirmedAt?: string;
   rejectedAt?: string;
+  statusHistory: OrderStatusHistory[];
   items: OrderItem[];
 }
 
@@ -127,6 +156,48 @@ export interface UpdateEstimatedReadyTimeInput {
   rowVersion: string;
 }
 
+export interface OrderVersionInput {
+  rowVersion: string;
+}
+
+export interface RecordPaymentInput extends OrderVersionInput {
+  paymentMethodUsed: PaymentMethodUsed;
+}
+
+export interface KitchenOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhoneNumber: string;
+  createdAt: string;
+  pickupMode: PickupMode;
+  requestedPickupTime?: string;
+  estimatedReadyAt?: string;
+  preparationStartedAt?: string;
+  readyAt?: string;
+  status: Extract<OrderStatus, "Confirmed" | "Preparing" | "ReadyForPickup">;
+  paymentMethod: PaymentMethod;
+  paymentReceived: boolean;
+  paymentMethodUsed?: PaymentMethodUsed;
+  total: number;
+  currency: string;
+  comment?: string;
+  itemQuantity: number;
+  rowVersion: string;
+  items: OrderItem[];
+}
+
+export type KitchenOrdersPage = PagedResponse<KitchenOrder>;
+
+export interface KitchenOrderFilters {
+  status?: "Confirmed" | "Preparing" | "ReadyForPickup";
+  createdFrom?: string;
+  createdTo?: string;
+  pickupFrom?: string;
+  pickupTo?: string;
+  orderNumber?: string;
+}
+
 export interface OrderRealtimeEvent {
   eventId: string;
   timestamp: string;
@@ -135,4 +206,9 @@ export interface OrderRealtimeEvent {
   status: OrderStatus;
   estimatedReadyAt?: string;
   rejectReason?: string;
+  preparationStartedAt?: string;
+  readyAt?: string;
+  completedAt?: string;
+  paymentReceived: boolean;
+  paymentMethodUsed?: PaymentMethodUsed;
 }

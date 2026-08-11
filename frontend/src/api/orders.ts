@@ -2,8 +2,13 @@ import type {
   CreateOrderInput,
   ConfirmOrderInput,
   CustomerOrdersPage,
+  KitchenOrder,
+  KitchenOrderFilters,
+  KitchenOrdersPage,
   OrderDetail,
+  OrderVersionInput,
   OrderStatus,
+  RecordPaymentInput,
   RejectOrderInput,
   StaffOrderDetail,
   StaffOrdersPage,
@@ -36,7 +41,7 @@ export function cancelOrder(id: string): Promise<OrderDetail> {
 }
 
 export function getStaffOrders(
-  status: OrderStatus | undefined = "PendingConfirmation",
+  status?: OrderStatus,
   page = 1,
   pageSize = 100,
   signal?: AbortSignal,
@@ -76,4 +81,54 @@ export function updateEstimatedReadyTime(
     `staff/orders/${id}/estimated-ready-time`,
     input,
   );
+}
+
+export function getKitchenOrders(
+  filters: KitchenOrderFilters = {},
+  page = 1,
+  pageSize = 100,
+  signal?: AbortSignal,
+): Promise<KitchenOrdersPage> {
+  return apiClient.get<KitchenOrdersPage>(
+    `staff/kitchen/orders${queryString({ ...filters, page, pageSize })}`,
+    { signal },
+  );
+}
+
+export function startKitchenOrder(
+  id: string,
+  input: OrderVersionInput,
+): Promise<KitchenOrder> {
+  return apiClient.post<KitchenOrder>(`staff/kitchen/${id}/start`, input);
+}
+
+export function markKitchenOrderReady(
+  id: string,
+  input: OrderVersionInput,
+): Promise<KitchenOrder> {
+  return apiClient.post<KitchenOrder>(`staff/kitchen/${id}/ready`, input);
+}
+
+export function updateKitchenOrderEta(
+  id: string,
+  input: UpdateEstimatedReadyTimeInput,
+): Promise<KitchenOrder> {
+  return apiClient.patch<KitchenOrder>(`staff/kitchen/${id}/eta`, input);
+}
+
+export function recordOrderPayment(
+  id: string,
+  input: RecordPaymentInput,
+): Promise<StaffOrderDetail> {
+  return apiClient.post<StaffOrderDetail>(
+    `staff/orders/${id}/record-payment`,
+    input,
+  );
+}
+
+export function completeOrder(
+  id: string,
+  input: OrderVersionInput,
+): Promise<StaffOrderDetail> {
+  return apiClient.post<StaffOrderDetail>(`staff/orders/${id}/complete`, input);
 }

@@ -35,6 +35,9 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(order => order.Total).HasPrecision(12, 2);
         builder.Property(order => order.Currency).HasMaxLength(3).IsRequired();
         builder.Property(order => order.RejectReason).HasMaxLength(500);
+        builder.Property(order => order.PaymentMethodUsed)
+            .HasConversion<string>()
+            .HasMaxLength(16);
         builder.Property(order => order.RowVersion).IsConcurrencyToken();
         builder.HasIndex(order => order.OrderNumber).IsUnique();
         builder.HasIndex(order => new { order.CustomerId, order.CreatedAt });
@@ -53,6 +56,26 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasOne(order => order.RejectedByEmployee)
             .WithMany()
             .HasForeignKey(order => order.RejectedByEmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.PreparationStartedByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.PreparationStartedByEmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.ReadyByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.ReadyByEmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.PaymentReceivedByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.PaymentReceivedByEmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.CompletedByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.CompletedByEmployeeId)
             .OnDelete(DeleteBehavior.Restrict);
         builder
             .HasMany(order => order.Items)

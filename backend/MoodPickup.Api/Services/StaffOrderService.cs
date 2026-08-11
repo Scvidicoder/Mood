@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using MoodPickup.Api.Data;
@@ -41,20 +40,11 @@ public sealed class StaffOrderService(
             .AsNoTracking()
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
+            .Include(item => item.StatusHistory)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw NotFound();
 
         return ToStaffDetail(order);
-    }
-
-    public Task<PagedResponse<StaffOrderSummaryDto>> GetKitchenOrdersAsync(
-        PaginationQuery query,
-        CancellationToken cancellationToken)
-    {
-        var confirmedOrders = dbContext.Orders
-            .AsNoTracking()
-            .Where(order => order.Status == OrderStatus.Confirmed);
-        return GetPageAsync(confirmedOrders, query, cancellationToken);
     }
 
     public async Task<StaffOrderDetailDto> ConfirmAsync(
@@ -85,10 +75,12 @@ public sealed class StaffOrderService(
             estimatedReadyAt = order.EstimatedReadyAt
         };
 
+        var oldStatus = order.Status;
         order.Status = OrderStatus.Confirmed;
         order.EstimatedReadyAt = estimatedReadyAt;
         order.ConfirmedAt = confirmedAt;
         order.ConfirmedByEmployeeId = employeeId;
+        AddStatusHistory(order, oldStatus, employeeId, confirmedAt);
         await auditService.RecordAsync(
             "OrderConfirmed",
             "Order",
@@ -150,10 +142,12 @@ public sealed class StaffOrderService(
             rejectReason = order.RejectReason
         };
 
+        var oldStatus = order.Status;
         order.Status = OrderStatus.Rejected;
         order.RejectReason = reason;
         order.RejectedAt = rejectedAt;
         order.RejectedByEmployeeId = employeeId;
+        AddStatusHistory(order, oldStatus, employeeId, rejectedAt, reason);
         await auditService.RecordAsync(
             "OrderRejected",
             "Order",
@@ -249,6 +243,11 @@ public sealed class StaffOrderService(
                 order.Comment,
                 order.Status,
                 order.EstimatedReadyAt,
+                order.PreparationStartedAt,
+                order.ReadyAt,
+                order.CompletedAt,
+                order.PaymentReceived,
+                order.PaymentMethodUsed,
                 order.Items.Sum(item => item.Quantity),
                 order.RowVersion))
             .ToListAsync(cancellationToken);
@@ -268,53 +267,17 @@ public sealed class StaffOrderService(
         return await dbContext.Orders
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
+            .Include(item => item.StatusHistory)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw NotFound();
     }
 
     private DateTimeOffset ValidateEstimatedReadyTime(DateTimeOffset value)
     {
-        var options = checkoutOptions.CurrentValue;
-        var timeZone = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZoneId);
-        var now = timeProvider.GetUtcNow();
-        var localNow = TimeZoneInfo.ConvertTime(now, timeZone);
-        var localValue = TimeZoneInfo.ConvertTime(value, timeZone);
-        var opening = TimeOnly.ParseExact(
-            options.OpeningTime,
-            "HH:mm",
-            CultureInfo.InvariantCulture);
-        var closing = TimeOnly.ParseExact(
-            options.ClosingTime,
-            "HH:mm",
-            CultureInfo.InvariantCulture);
-        var localTime = TimeOnly.FromDateTime(localValue.DateTime);
-        var errors = new List<string>();
-
-        if (localValue.Date != localNow.Date)
-        {
-            errors.Add("Estimated ready time must be today in the cafe time zone.");
-        }
-
-        if (localTime < opening || localTime >= closing)
-        {
-            errors.Add(
-                $"Estimated ready time must be within business hours ({options.OpeningTime}-{options.ClosingTime}).");
-        }
-
-        if (value.ToUniversalTime() <= now)
-        {
-            errors.Add("Estimated ready time must be after the current time.");
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ApiValidationException(new Dictionary<string, string[]>
-            {
-                ["estimatedReadyTime"] = errors.ToArray()
-            });
-        }
-
-        return value.ToUniversalTime();
+        return EstimatedReadyTimeRules.Validate(
+            value,
+            checkoutOptions.CurrentValue,
+            timeProvider.GetUtcNow());
     }
 
     private async Task SaveChangesAsync(CancellationToken cancellationToken)
@@ -323,8 +286,12 @@ public sealed class StaffOrderService(
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException exception)
         {
+            logger.LogError(
+                exception,
+                "Order concurrency update failed for entries {Entries}.",
+                string.Join(",", exception.Entries.Select(entry => entry.Metadata.ClrType.Name)));
             throw Conflict(
                 "The order was changed by another employee",
                 "ORDER_VERSION_CONFLICT",
@@ -372,7 +339,13 @@ public sealed class StaffOrderService(
             order.CreatedAt,
             order.ConfirmedAt,
             order.RejectedAt,
+            order.PreparationStartedAt,
+            order.ReadyAt,
+            order.CompletedAt,
+            order.PaymentReceived,
+            order.PaymentMethodUsed,
             order.RowVersion,
+            OrderDtoMapper.ToStatusHistory(order),
             OrderDtoMapper.ToItems(order));
     }
 
@@ -385,7 +358,33 @@ public sealed class StaffOrderService(
             order.OrderNumber,
             order.Status,
             order.EstimatedReadyAt,
-            order.RejectReason);
+            order.RejectReason,
+            order.PreparationStartedAt,
+            order.ReadyAt,
+            order.CompletedAt,
+            order.PaymentReceived,
+            order.PaymentMethodUsed);
+    }
+
+    private void AddStatusHistory(
+        Order order,
+        OrderStatus oldStatus,
+        Guid employeeId,
+        DateTimeOffset timestamp,
+        string? reason = null)
+    {
+        var history = new OrderStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            OldStatus = oldStatus,
+            NewStatus = order.Status,
+            Timestamp = timestamp,
+            EmployeeId = employeeId,
+            CorrelationId = currentUser.CorrelationId,
+            Reason = reason
+        };
+        order.StatusHistory.Add(history);
+        dbContext.OrderStatusHistories.Add(history);
     }
 
     private static void EnsureVersion(Guid expected, Order order)

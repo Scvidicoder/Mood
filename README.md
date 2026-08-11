@@ -1,7 +1,7 @@
 # Mood Pickup
 
 Mood Pickup is a pickup-ordering platform for Mood Dushanbe. The current
-foundation includes the Sprint 3.7 staff order-management flow and real
+foundation includes the Sprint 3.8 kitchen workflow and real
 Telegram customer authentication:
 
 - ASP.NET Core 8 Web API with PostgreSQL and EF Core;
@@ -44,19 +44,23 @@ Telegram customer authentication:
 - employee order dashboards for Administrator, Cashier, and Manager roles with
   pending-order confirmation, required ready-time assignment, rejection, and
   optimistic concurrency;
-- customer My Orders and live order tracking for confirmation, rejection, and
-  estimated-ready-time changes through authenticated SignalR groups;
-- transactional employee order audit entries and a confirmed-order backend
-  projection for the future kitchen board;
+- a responsive `/staff/kitchen` dashboard for active confirmed, preparing, and
+  ready orders, with Kitchen/Administrator actions and view-only access for
+  Cashier, Manager, and Pickup roles;
+- sequential preparation, ready, pickup-payment, and completion transitions
+  with immutable status history, employee attribution, audit snapshots, and
+  GUID row-version concurrency;
+- customer My Orders and live order tracking for confirmation, rejection,
+  preparation, ETA, ready, payment, and completion updates through authenticated
+  SignalR groups, with polling only as a disconnected fallback;
 - backend authentication/domain/order tests, real-PostgreSQL menu/media/order
   API tests, and network-boundary frontend Vitest coverage;
 - Docker Compose local orchestration with persistent PostgreSQL and media
   volumes.
 
-Backend cart storage, payment gateways, kitchen preparation/ready/completion
-workflows, and persisted multi-channel notifications remain outside the current
-scope. Sprint 3.7 implements only staff reception decisions and customer
-SignalR updates; the kitchen UI begins in Sprint 3.8.
+Backend cart storage, online payment gateways, refunds, and persisted
+multi-channel notifications remain outside the current scope. Online checkout
+is treated as already paid; pay-on-pickup supports audited Cash/Card receipt.
 The cart is an anonymous device-local draft and contains no trusted commercial
 truth; checkout recalculates it from the database before persisting an order.
 
@@ -180,6 +184,7 @@ the in-memory cart usable and show a non-blocking warning.
 | Staff login | <http://localhost:5173/staff/login> |
 | Staff dashboard | <http://localhost:5173/staff> |
 | Staff orders (Administrator, Cashier, Manager) | <http://localhost:5173/staff/orders> |
+| Kitchen dashboard (Kitchen, Cashier, Manager, Pickup, Administrator) | <http://localhost:5173/staff/kitchen> |
 | Menu administration | <http://localhost:5173/staff/menu> |
 | Categories | <http://localhost:5173/staff/menu/categories> |
 | Products | <http://localhost:5173/staff/menu/products> |
@@ -205,6 +210,7 @@ the in-memory cart usable and show a non-blocking warning.
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
 - `20260811061908_Sprint37StaffOrderManagement`
+- `20260811073656_Sprint38KitchenWorkflow`
 
 ```powershell
 dotnet ef migrations list --project backend/MoodPickup.Api --startup-project backend/MoodPickup.Api -- --environment Development

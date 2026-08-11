@@ -22,14 +22,18 @@ export function OrderSuccessPage() {
   const queryClient = useQueryClient();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const initialOrder = (location.state as OrderSuccessLocationState | null)?.order;
+  const connectionState = useOrderNotifications(id);
   const order = useQuery({
     queryKey: ["orders", id],
     queryFn: ({ signal }) => getOrder(id, signal),
     enabled: Boolean(id),
     initialData: initialOrder?.id === id ? initialOrder : undefined,
-    refetchInterval: 15_000,
+    refetchInterval: (query) =>
+      connectionState === "Connected" ||
+      (query.state.data && ["Completed", "Cancelled", "Rejected"].includes(query.state.data.status))
+        ? false
+        : 15_000,
   });
-  const connectionState = useOrderNotifications(id);
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(id),
     onSuccess: (updated) => {
@@ -55,6 +59,10 @@ export function OrderSuccessPage() {
   }
 
   const value = order.data;
+  const workflowSteps = ["Confirmed", "Preparing", "ReadyForPickup", "Completed"] as const;
+  const currentStep = workflowSteps.indexOf(
+    value.status as (typeof workflowSteps)[number],
+  );
   return (
     <section className="order-success-page">
       <div className="order-success-card">
@@ -62,11 +70,25 @@ export function OrderSuccessPage() {
         <p className="eyebrow">Order tracking · {connectionState}</p>
         <h1 ref={headingRef} tabIndex={-1}>{statusHeading(value)}</h1>
         <p>{statusMessage(value)}</p>
+        {!(["Rejected", "Cancelled"] as string[]).includes(value.status) ? (
+          <ol className="order-progress" aria-label="Order progress">
+            {workflowSteps.map((status, index) => (
+              <li
+                className={index <= currentStep ? "order-progress__step--complete" : ""}
+                key={status}
+              >
+                <span aria-hidden="true">{index + 1}</span>
+                {orderStatusLabel(status)}
+              </li>
+            ))}
+          </ol>
+        ) : null}
         <dl className="order-success-details">
           <div><dt>Order number</dt><dd>{value.orderNumber}</dd></div>
           <div><dt>Total</dt><dd>{formatMoney(value.total, value.currency)}</dd></div>
           <div><dt>Pickup</dt><dd>{pickupLabel(value)}</dd></div>
           <div><dt>Payment</dt><dd>{paymentMethodLabel(value.paymentMethod)}</dd></div>
+          <div><dt>Payment status</dt><dd>{value.paymentReceived ? "Received" : "Due at pickup"}</dd></div>
           <div><dt>Status</dt><dd>{orderStatusLabel(value.status)}</dd></div>
           {value.estimatedReadyAt ? (
             <div><dt>Estimated ready</dt><dd>{formatDate(value.estimatedReadyAt)}</dd></div>
@@ -75,6 +97,18 @@ export function OrderSuccessPage() {
         {value.rejectReason ? (
           <p className="order-reject-reason"><strong>Reason:</strong> {value.rejectReason}</p>
         ) : null}
+        <div className="customer-status-history">
+          <h2>Status history</h2>
+          <ol className="order-status-history">
+            {value.statusHistory.map((history, index) => (
+              <li key={`${history.timestamp}-${index}`}>
+                <strong>{orderStatusLabel(history.newStatus)}</strong>
+                <span>{formatDate(history.timestamp)}</span>
+                {history.reason ? <p>{history.reason}</p> : null}
+              </li>
+            ))}
+          </ol>
+        </div>
         {cancelMutation.error ? <ErrorState error={cancelMutation.error} /> : null}
         <div className="order-success-actions">
           {value.status === "PendingConfirmation" ? (
@@ -107,6 +141,12 @@ function statusHeading(order: OrderDetail): string {
   switch (order.status) {
     case "Confirmed":
       return "Your order is confirmed.";
+    case "Preparing":
+      return "Your order is being prepared.";
+    case "ReadyForPickup":
+      return "Your order is ready for pickup.";
+    case "Completed":
+      return "Your order is complete.";
     case "Rejected":
       return "The cafe could not accept this order.";
     case "Cancelled":
@@ -121,6 +161,19 @@ function statusMessage(order: OrderDetail): string {
     return order.estimatedReadyAt
       ? `The cafe expects your order to be ready at ${formatDate(order.estimatedReadyAt)}.`
       : "The cafe accepted your order.";
+  }
+  if (order.status === "Preparing") {
+    return order.estimatedReadyAt
+      ? `The kitchen is working on your order. Estimated ready time: ${formatDate(order.estimatedReadyAt)}.`
+      : "The kitchen is working on your order now.";
+  }
+  if (order.status === "ReadyForPickup") {
+    return order.paymentReceived
+      ? "Your order is ready. Show your order number at pickup."
+      : "Your order is ready. Please pay when you collect it.";
+  }
+  if (order.status === "Completed") {
+    return "This order has been collected and completed.";
   }
   if (order.status === "Rejected") {
     return "Review the cafe's reason below. No employee information is shared.";

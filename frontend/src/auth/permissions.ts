@@ -4,6 +4,9 @@ export type StaffCapability =
   | "employee"
   | "manageMenu"
   | "manageOrders"
+  | "viewKitchen"
+  | "workKitchen"
+  | "completeOrders"
   | "viewAuditLog";
 
 export function hasStaffCapability(
@@ -33,6 +36,27 @@ export function hasStaffCapability(
       isAdministrator ||
       session.roles.includes("Cashier") ||
       session.roles.includes("Manager")
+    );
+  }
+
+  if (capability === "viewKitchen") {
+    return (
+      isAdministrator ||
+      session.roles.some((role) =>
+        ["Kitchen", "Cashier", "Manager", "Pickup"].includes(role),
+      )
+    );
+  }
+
+  if (capability === "workKitchen") {
+    return isAdministrator || session.roles.includes("Kitchen");
+  }
+
+  if (capability === "completeOrders") {
+    return (
+      isAdministrator ||
+      session.roles.includes("Cashier") ||
+      session.roles.includes("Pickup")
     );
   }
 

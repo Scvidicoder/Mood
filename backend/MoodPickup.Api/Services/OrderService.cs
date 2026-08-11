@@ -88,8 +88,18 @@ public sealed class OrderService(
                 Subtotal = subtotal,
                 DiscountTotal = 0m,
                 Total = subtotal,
-                Currency = options.Currency.ToUpperInvariant()
+                Currency = options.Currency.ToUpperInvariant(),
+                PaymentReceived = request.PaymentMethod == PaymentMethod.Online
             };
+
+            order.StatusHistory.Add(new OrderStatusHistory
+            {
+                Id = Guid.NewGuid(),
+                OldStatus = null,
+                NewStatus = OrderStatus.PendingConfirmation,
+                Timestamp = now,
+                CorrelationId = currentUser.CorrelationId
+            });
 
             foreach (var item in validatedItems)
             {
@@ -170,6 +180,7 @@ public sealed class OrderService(
             .AsNoTracking()
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
+            .Include(item => item.StatusHistory)
             .SingleOrDefaultAsync(
                 item => item.Id == id && item.CustomerId == customerId,
                 cancellationToken)
@@ -209,7 +220,12 @@ public sealed class OrderService(
                 order.Items.Sum(item => item.Quantity),
                 order.CreatedAt,
                 order.EstimatedReadyAt,
-                order.RejectReason))
+                order.RejectReason,
+                order.PreparationStartedAt,
+                order.ReadyAt,
+                order.CompletedAt,
+                order.PaymentReceived,
+                order.PaymentMethodUsed))
             .ToListAsync(cancellationToken);
 
         return new PagedResponse<OrderSummaryDto>(
@@ -228,6 +244,7 @@ public sealed class OrderService(
         var order = await dbContext.Orders
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
+            .Include(item => item.StatusHistory)
             .SingleOrDefaultAsync(
                 item => item.Id == id && item.CustomerId == customerId,
                 cancellationToken)
@@ -246,7 +263,18 @@ public sealed class OrderService(
                 "ORDER_CANNOT_BE_CANCELLED");
         }
 
+        var oldStatus = order.Status;
         order.Status = OrderStatus.Cancelled;
+        var cancellationHistory = new OrderStatusHistory
+        {
+            Id = Guid.NewGuid(),
+            OldStatus = oldStatus,
+            NewStatus = order.Status,
+            Timestamp = timeProvider.GetUtcNow(),
+            CorrelationId = currentUser.CorrelationId
+        };
+        order.StatusHistory.Add(cancellationHistory);
+        dbContext.OrderStatusHistories.Add(cancellationHistory);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);

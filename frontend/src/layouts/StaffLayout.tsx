@@ -1,15 +1,25 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "../app/AuthProvider";
 import { hasStaffCapability } from "../auth/permissions";
 import { ErrorState } from "../components/ErrorState";
-import { useNotificationsConnection } from "../hooks/useNotificationsConnection";
+import { useStaffOrderNotifications } from "../hooks/useStaffOrderNotifications";
+import type { ConnectionState } from "../hooks/useNotificationsConnection";
+
+interface StaffLayoutContext {
+  connectionState: ConnectionState;
+}
+
+export function useStaffConnectionState(): ConnectionState {
+  return useOutletContext<StaffLayoutContext | undefined>()?.connectionState ??
+    "Disconnected";
+}
 
 export function StaffLayout() {
   const navigate = useNavigate();
   const { session, logout } = useAuth();
-  const connectionState = useNotificationsConnection();
+  const connectionState = useStaffOrderNotifications();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const logoutMutation = useMutation({
     mutationFn: logout,
@@ -17,6 +27,7 @@ export function StaffLayout() {
   });
   const canManageMenu = hasStaffCapability(session, "manageMenu");
   const canManageOrders = hasStaffCapability(session, "manageOrders");
+  const canViewKitchen = hasStaffCapability(session, "viewKitchen");
   const canViewAudit = hasStaffCapability(session, "viewAuditLog");
 
   return (
@@ -33,6 +44,11 @@ export function StaffLayout() {
           {canManageOrders ? (
             <NavLink onClick={() => setNavigationOpen(false)} to="/staff/orders">
               Orders
+            </NavLink>
+          ) : null}
+          {canViewKitchen ? (
+            <NavLink onClick={() => setNavigationOpen(false)} to="/staff/kitchen">
+              Kitchen
             </NavLink>
           ) : null}
           {canManageMenu ? (
@@ -109,7 +125,7 @@ export function StaffLayout() {
           </div>
         ) : null}
         <main className="staff-main">
-          <Outlet />
+          <Outlet context={{ connectionState } satisfies StaffLayoutContext} />
         </main>
       </div>
     </div>

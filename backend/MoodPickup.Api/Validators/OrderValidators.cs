@@ -1,5 +1,6 @@
 using FluentValidation;
 using MoodPickup.Api.DTOs.Orders;
+using MoodPickup.Api.Entities;
 
 namespace MoodPickup.Api.Validators;
 
@@ -66,6 +67,53 @@ public sealed class UpdateEstimatedReadyTimeRequestValidator
     public UpdateEstimatedReadyTimeRequestValidator()
     {
         RuleFor(request => request.EstimatedReadyTime).NotEmpty();
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}
+
+public sealed class KitchenOrderListQueryValidator
+    : PaginationValidator<KitchenOrderListQuery>
+{
+    public KitchenOrderListQueryValidator()
+    {
+        RuleFor(query => query.Status)
+            .Must(status => status is
+                OrderStatus.Confirmed or
+                OrderStatus.Preparing or
+                OrderStatus.ReadyForPickup)
+            .When(query => query.Status is not null)
+            .WithMessage("Kitchen status must be Confirmed, Preparing, or ReadyForPickup.");
+        RuleFor(query => query.OrderNumber).MaximumLength(32);
+        RuleFor(query => query)
+            .Must(query => query.CreatedFrom is null ||
+                           query.CreatedTo is null ||
+                           query.CreatedFrom < query.CreatedTo)
+            .WithMessage("CreatedTo must be later than CreatedFrom.");
+        RuleFor(query => query)
+            .Must(query => query.PickupFrom is null ||
+                           query.PickupTo is null ||
+                           query.PickupFrom < query.PickupTo)
+            .WithMessage("PickupTo must be later than PickupFrom.");
+    }
+}
+
+public sealed class OrderVersionRequestValidator
+    : AbstractValidator<OrderVersionRequest>
+{
+    public OrderVersionRequestValidator()
+    {
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}
+
+public sealed class RecordPaymentRequestValidator
+    : AbstractValidator<RecordPaymentRequest>
+{
+    public RecordPaymentRequestValidator()
+    {
+        RuleFor(request => request.PaymentMethodUsed)
+            .NotNull()
+            .IsInEnum();
         RuleFor(request => request.RowVersion).NotEmpty();
     }
 }

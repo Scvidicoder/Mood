@@ -1,7 +1,7 @@
 
 # Client UI Specification
 
-Version: 1.2 (Sprint 3.5)
+Version: 1.5 (Sprint 3.8)
 
 ## 1. Purpose
 
@@ -9,10 +9,10 @@ This document defines the customer-facing interface of Mood Pickup System.
 
 The customer interface is mobile-first and optimized for fast one-handed ordering.
 
-Sprint 3.5 implements `/`, `/product/{id}`, and `/cart`: anonymous browsing,
-search, category navigation/filtering, interactive option selection, dynamic
-configured prices, and a persistent device-local cart. Checkout, backend order
-creation, cafe operating status, payments, and order history remain planned.
+The implemented UI includes anonymous browsing/configuration/cart, customer
+checkout, My Orders, and live order detail. Sprint 3.8 adds preparation,
+ready-for-pickup, payment-state, completion, progress, ETA, and status-history
+presentation. Online gateways and refunds remain planned.
 
 ## 2. Navigation Structure
 
@@ -21,6 +21,9 @@ Implemented customer routes:
 - `/`
 - `/product/{id}`
 - `/cart`
+- `/checkout`
+- `/orders`
+- `/order-success/{id}`
 - `/profile`
 - `/login`
 - `/verify`
@@ -668,8 +671,8 @@ Every customer screen must support:
 - Stale data warning
 
 SignalR disconnection must not block basic use. The interface reconnects
-automatically and falls back to 15-second API refresh on Sprint 3.7 order
-tracking and My Orders pages. Duplicate event IDs are ignored.
+automatically and falls back to 15-second API refresh on order tracking and My
+Orders pages only while disconnected. Duplicate event IDs are ignored.
 
 ---
 

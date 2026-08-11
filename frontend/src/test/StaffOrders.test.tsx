@@ -12,9 +12,20 @@ const mocks = vi.hoisted(() => ({
   confirmOrder: vi.fn(),
   rejectOrder: vi.fn(),
   updateEstimatedReadyTime: vi.fn(),
+  recordOrderPayment: vi.fn(),
+  completeOrder: vi.fn(),
 }));
 
 vi.mock("../api/orders", () => mocks);
+vi.mock("../app/AuthProvider", () => ({
+  useAuth: () => ({
+    session: {
+      accountType: "employee",
+      roles: ["Cashier"],
+      mustChangePassword: false,
+    },
+  }),
+}));
 
 describe("staff order dashboard", () => {
   beforeEach(() => {
@@ -70,6 +81,51 @@ describe("staff order dashboard", () => {
     });
     expect(await screen.findByText("Order rejected.")).toBeVisible();
   });
+
+  it("records the selected pickup payment method", async () => {
+    const user = userEvent.setup();
+    mocks.getStaffOrders.mockResolvedValue({
+      items: [pendingOrder({ status: "ReadyForPickup" })],
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      totalPages: 1,
+    });
+    mocks.recordOrderPayment.mockResolvedValue(
+      detail({ status: "ReadyForPickup", paymentReceived: true, paymentMethodUsed: "Card" }),
+    );
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Record payment" }));
+    await user.selectOptions(screen.getByLabelText("Payment method used"), "Card");
+    await user.click(screen.getAllByRole("button", { name: "Record payment" }).at(-1)!);
+
+    expect(mocks.recordOrderPayment).toHaveBeenCalledWith("order-1", {
+      paymentMethodUsed: "Card",
+      rowVersion: "row-version-1",
+    });
+  });
+
+  it("completes a paid ready order", async () => {
+    const user = userEvent.setup();
+    const ready = pendingOrder({ status: "ReadyForPickup", paymentReceived: true });
+    mocks.getStaffOrders.mockResolvedValue({
+      items: [ready],
+      page: 1,
+      pageSize: 100,
+      totalCount: 1,
+      totalPages: 1,
+    });
+    mocks.completeOrder.mockResolvedValue(detail({ ...ready, status: "Completed" }));
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Complete order" }));
+    await user.click(screen.getAllByRole("button", { name: "Complete order" }).at(-1)!);
+
+    expect(mocks.completeOrder).toHaveBeenCalledWith("order-1", {
+      rowVersion: "row-version-1",
+    });
+  });
 });
 
 function renderPage() {
@@ -87,7 +143,9 @@ function renderPage() {
   );
 }
 
-function pendingOrder(): StaffOrderSummary {
+function pendingOrder(
+  overrides: Partial<StaffOrderSummary> = {},
+): StaffOrderSummary {
   return {
     id: "order-1",
     orderNumber: "MP-20260811-00001",
@@ -100,8 +158,10 @@ function pendingOrder(): StaffOrderSummary {
     currency: "TJS",
     comment: "Please call on arrival.",
     status: "PendingConfirmation",
+    paymentReceived: false,
     itemQuantity: 2,
     rowVersion: "row-version-1",
+    ...overrides,
   };
 }
 
@@ -110,6 +170,7 @@ function detail(overrides: Partial<StaffOrderDetail>): StaffOrderDetail {
     ...pendingOrder(),
     subtotal: 24,
     discountTotal: 0,
+    statusHistory: [],
     items: [],
     ...overrides,
   };

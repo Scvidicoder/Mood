@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { getStaffOrder } from "../../../api/orders";
 import { ErrorState } from "../../../components/ErrorState";
 import { LoadingState } from "../../../components/LoadingState";
+import { useStaffConnectionState } from "../../../layouts/StaffLayout";
 import { formatDate, formatMoney } from "../../../utils/format";
 import {
   orderStatusLabel,
@@ -12,11 +13,12 @@ import {
 
 export function StaffOrderDetailsPage() {
   const { id = "" } = useParams();
+  const connectionState = useStaffConnectionState();
   const order = useQuery({
     queryKey: ["staff", "orders", "detail", id],
     queryFn: ({ signal }) => getStaffOrder(id, signal),
     enabled: Boolean(id),
-    refetchInterval: 10_000,
+    refetchInterval: connectionState === "Connected" ? false : 10_000,
   });
 
   if (order.isLoading) return <LoadingState message="Loading order details…" />;
@@ -41,6 +43,11 @@ export function StaffOrderDetailsPage() {
             {value.requestedPickupTime ? <div><dt>Requested</dt><dd>{formatDate(value.requestedPickupTime)}</dd></div> : null}
             {value.estimatedReadyAt ? <div><dt>Estimated ready</dt><dd>{formatDate(value.estimatedReadyAt)}</dd></div> : null}
             <div><dt>Payment</dt><dd>{paymentMethodLabel(value.paymentMethod)}</dd></div>
+            <div><dt>Payment received</dt><dd>{value.paymentReceived ? "Yes" : "No"}</dd></div>
+            {value.paymentMethodUsed ? <div><dt>Payment method used</dt><dd>{value.paymentMethodUsed}</dd></div> : null}
+            {value.preparationStartedAt ? <div><dt>Preparation started</dt><dd>{formatDate(value.preparationStartedAt)}</dd></div> : null}
+            {value.readyAt ? <div><dt>Ready</dt><dd>{formatDate(value.readyAt)}</dd></div> : null}
+            {value.completedAt ? <div><dt>Completed</dt><dd>{formatDate(value.completedAt)}</dd></div> : null}
           </dl>
           {value.comment ? <p className="staff-order-comment"><strong>Customer comment:</strong> {value.comment}</p> : null}
           {value.rejectReason ? <p className="order-reject-reason"><strong>Rejection reason:</strong> {value.rejectReason}</p> : null}
@@ -54,6 +61,18 @@ export function StaffOrderDetailsPage() {
           </dl>
         </article>
       </div>
+      <article className="panel panel--spaced">
+        <h2>Status history</h2>
+        <ol className="order-status-history">
+          {value.statusHistory.map((history, index) => (
+            <li key={`${history.timestamp}-${index}`}>
+              <strong>{orderStatusLabel(history.newStatus)}</strong>
+              <span>{formatDate(history.timestamp)}</span>
+              {history.reason ? <p>{history.reason}</p> : null}
+            </li>
+          ))}
+        </ol>
+      </article>
       <article className="panel panel--spaced">
         <h2>Immutable item snapshots</h2>
         <div className="staff-order-items">

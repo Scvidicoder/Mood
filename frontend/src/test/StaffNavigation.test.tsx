@@ -25,8 +25,8 @@ vi.mock("../api/auth", async (importOriginal) => {
   return { ...actual, logoutSession: mocks.logoutSession };
 });
 
-vi.mock("../hooks/useNotificationsConnection", () => ({
-  useNotificationsConnection: () => "Connected",
+vi.mock("../hooks/useStaffOrderNotifications", () => ({
+  useStaffOrderNotifications: () => "Connected",
 }));
 
 describe("staff authorization and navigation", () => {
@@ -74,6 +74,7 @@ describe("staff authorization and navigation", () => {
     renderLayout();
 
     expect(await screen.findByRole("link", { name: "Orders" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Kitchen" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Menu overview" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Audit log" })).not.toBeInTheDocument();
   });
@@ -105,7 +106,7 @@ describe("staff authorization and navigation", () => {
     const customerRoot = router.routes.find((route) => route.path === "/");
 
     expect(staffRoot?.children?.map((route) => route.path)).toEqual(
-      expect.arrayContaining(["orders", "orders/:id"]),
+      expect.arrayContaining(["orders", "orders/:id", "kitchen"]),
     );
     expect(
       customerRoot?.children?.filter((route) => route.path === "orders"),

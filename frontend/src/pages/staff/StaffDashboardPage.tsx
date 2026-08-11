@@ -6,6 +6,7 @@ export function StaffDashboardPage() {
   const { session } = useAuth();
   const canManageMenu = hasStaffCapability(session, "manageMenu");
   const canManageOrders = hasStaffCapability(session, "manageOrders");
+  const canViewKitchen = hasStaffCapability(session, "viewKitchen");
 
   return (
     <section>
@@ -34,6 +35,13 @@ export function StaffDashboardPage() {
             <span>Pending orders</span>
             <strong>Open dashboard</strong>
             <small>Confirm, reject, and manage estimated ready times</small>
+          </Link>
+        ) : null}
+        {canViewKitchen ? (
+          <Link className="summary-card summary-card--link" to="/staff/kitchen">
+            <span>Kitchen workflow</span>
+            <strong>Open dashboard</strong>
+            <small>Track confirmed, preparing, and ready orders live</small>
           </Link>
         ) : null}
         {canManageMenu ? (

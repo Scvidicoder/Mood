@@ -18,4 +18,24 @@ public interface IOrderRealtimeNotifier
         Guid customerId,
         OrderRealtimeEventDto notification,
         CancellationToken cancellationToken);
+
+    Task OrderPreparingAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken);
+
+    Task OrderReadyAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken);
+
+    Task PaymentStatusChangedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken);
+
+    Task OrderCompletedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken);
 }

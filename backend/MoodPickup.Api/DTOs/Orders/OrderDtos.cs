@@ -29,7 +29,12 @@ public sealed record OrderSummaryDto(
     int ItemQuantity,
     DateTimeOffset CreatedAt,
     DateTimeOffset? EstimatedReadyAt,
-    string? RejectReason);
+    string? RejectReason,
+    DateTimeOffset? PreparationStartedAt,
+    DateTimeOffset? ReadyAt,
+    DateTimeOffset? CompletedAt,
+    bool PaymentReceived,
+    PaymentMethodUsed? PaymentMethodUsed);
 
 public sealed record OrderDetailDto(
     Guid Id,
@@ -46,6 +51,12 @@ public sealed record OrderDetailDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset? EstimatedReadyAt,
     string? RejectReason,
+    DateTimeOffset? PreparationStartedAt,
+    DateTimeOffset? ReadyAt,
+    DateTimeOffset? CompletedAt,
+    bool PaymentReceived,
+    PaymentMethodUsed? PaymentMethodUsed,
+    IReadOnlyList<OrderStatusHistoryDto> StatusHistory,
     IReadOnlyList<OrderItemDto> Items);
 
 public sealed record OrderRealtimeEventDto(
@@ -55,7 +66,18 @@ public sealed record OrderRealtimeEventDto(
     string OrderNumber,
     OrderStatus Status,
     DateTimeOffset? EstimatedReadyAt,
-    string? RejectReason);
+    string? RejectReason,
+    DateTimeOffset? PreparationStartedAt,
+    DateTimeOffset? ReadyAt,
+    DateTimeOffset? CompletedAt,
+    bool PaymentReceived,
+    PaymentMethodUsed? PaymentMethodUsed);
+
+public sealed record OrderStatusHistoryDto(
+    OrderStatus? OldStatus,
+    OrderStatus NewStatus,
+    DateTimeOffset Timestamp,
+    string? Reason);
 
 public sealed record OrderItemDto(
     Guid ProductId,

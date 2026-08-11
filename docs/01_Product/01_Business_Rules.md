@@ -46,14 +46,10 @@ PendingConfirmation
 ## BR-006 – Statuses cannot be skipped
 Orders must always move through every stage sequentially.
 
-## BR-007 – Allowed rollback
-Only these rollbacks are allowed:
+## BR-007 – No workflow rollback in Sprint 3.8
 
-Preparing → Confirmed
-ReadyForPickup → Preparing
-Completed → ReadyForPickup
-
-Rollback requires a reason and is written to the audit log.
+Sprint 3.8 supports forward transitions only. Preparation, ready, and
+completion actions cannot be skipped, repeated, or rolled back.
 
 ## BR-008 – Customer cancellation
 Sprint 3.7 customers may cancel an order only while it is
@@ -64,9 +60,10 @@ The café may reject an order only while it is `PendingConfirmation`.
 Rejecting a confirmed order is forbidden. A rejection reason is mandatory.
 
 ## BR-010 – Estimated ready time
-In Sprint 3.7, estimated ready time is assigned or changed by Administrator,
-Cashier, or Manager order staff. Confirmation requires the time to be later
-than now, today in the café time zone, and inside working hours.
+Estimated ready time is assigned at confirmation and may be changed by order
+staff while Confirmed or by Kitchen/Administrator while Confirmed or Preparing.
+It must be later than now, today in the café time zone, and inside working
+hours. ETA cannot change after the order becomes ready.
 
 ---
 
@@ -79,11 +76,12 @@ Supported payment methods:
 - Pay on Pickup
 
 ## BR-012 – Online payment
-Online payment is completed immediately after checkout.
+Sprint 3.8 assumes Online orders are already paid. No payment provider is
+called and no gateway transaction is stored.
 
-## BR-013 – Automatic refund
-If an online order is cancelled by the customer while pending confirmation or rejected by the café,
-a full refund is initiated automatically.
+## BR-013 – Refund boundary
+Refunds are outside Sprint 3.8. Cancellation or rejection does not call a
+payment provider.
 
 ## BR-014 – Pickup payment
 Orders with "Pay on Pickup" cannot be completed until payment is marked as received.
@@ -92,7 +90,7 @@ Orders with "Pay on Pickup" cannot be completed until payment is marked as recei
 For pickup payments the employee must record:
 
 - Cash
-- Bank Card
+- Card
 
 ---
 

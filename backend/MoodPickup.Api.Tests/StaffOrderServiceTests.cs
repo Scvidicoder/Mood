@@ -266,6 +266,42 @@ public sealed class StaffOrderServiceTests
             Notifications.Add(new("EstimatedReadyTimeChanged", customerId, notification));
             return Task.CompletedTask;
         }
+
+        public Task OrderPreparingAsync(
+            Guid customerId,
+            OrderRealtimeEventDto notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(new("OrderPreparing", customerId, notification));
+            return Task.CompletedTask;
+        }
+
+        public Task OrderReadyAsync(
+            Guid customerId,
+            OrderRealtimeEventDto notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(new("OrderReady", customerId, notification));
+            return Task.CompletedTask;
+        }
+
+        public Task PaymentStatusChangedAsync(
+            Guid customerId,
+            OrderRealtimeEventDto notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(new("PaymentStatusChanged", customerId, notification));
+            return Task.CompletedTask;
+        }
+
+        public Task OrderCompletedAsync(
+            Guid customerId,
+            OrderRealtimeEventDto notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(new("OrderCompleted", customerId, notification));
+            return Task.CompletedTask;
+        }
     }
 
     private sealed record RecordedNotification(

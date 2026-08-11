@@ -71,6 +71,11 @@ public sealed class FoundationEndpointsTests(MoodPickupApiFactory factory)
                         "MP-20260811-00001",
                         OrderStatus.Confirmed,
                         factory.TimeProvider.GetUtcNow().AddMinutes(20),
+                        null,
+                        null,
+                        null,
+                        null,
+                        false,
                         null)
                 ]),
             output);

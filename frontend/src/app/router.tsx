@@ -26,6 +26,7 @@ import { OptionGroupsPage } from "../pages/staff/menu/OptionGroupsPage";
 import { ProductFormPage } from "../pages/staff/menu/ProductFormPage";
 import { ProductsPage } from "../pages/staff/menu/ProductsPage";
 import { StaffDashboardPage } from "../pages/staff/StaffDashboardPage";
+import { KitchenDashboardPage } from "../pages/staff/kitchen/KitchenDashboardPage";
 import { StaffProfilePage } from "../pages/staff/StaffProfilePage";
 import { StaffOrderDetailsPage } from "../pages/staff/orders/StaffOrderDetailsPage";
 import { StaffOrdersPage } from "../pages/staff/orders/StaffOrdersPage";
@@ -139,6 +140,14 @@ export const router = createBrowserRouter([
         element: (
           <StaffRoute capability="manageOrders">
             <StaffOrderDetailsPage />
+          </StaffRoute>
+        ),
+      },
+      {
+        path: "kitchen",
+        element: (
+          <StaffRoute capability="viewKitchen">
+            <KitchenDashboardPage />
           </StaffRoute>
         ),
       },

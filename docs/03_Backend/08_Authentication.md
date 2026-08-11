@@ -459,15 +459,14 @@ Full access to all staff and admin functions.
 - Start preparation
 - Set or change estimated ready time
 - Mark order ready
-- Perform allowed kitchen rollbacks
 - View customer contact information in details
+- Cannot record payment or complete an order
 
 ### Pickup
 
 - View ready orders
 - Record on-site payment
 - Complete orders
-- Perform allowed completion rollback
 - View customer contact information
 
 ### MenuManager
@@ -481,9 +480,14 @@ Full access to all staff and admin functions.
 ### Cashier and Manager
 
 - View staff order lists and complete order details
+- View active kitchen status
 - Confirm pending orders and assign estimated ready time
 - Reject pending orders with a reason
 - Change the estimated ready time of confirmed orders
+
+Cashier may record pickup payment and complete ready orders. Manager has
+view-only kitchen access and cannot perform kitchen, payment, or completion
+actions.
 
 `MenuManager` alone has no order-management access.
 
@@ -495,12 +499,18 @@ Examples:
 
 - `CanReceiveOrders`
 - `CanWorkKitchen`
+- `CanViewKitchen` (`Kitchen`, `Cashier`, `Manager`, `Pickup`, or Administrator)
 - `CanIssueOrders`
 - `CanManageMenu`
 - `CanManageEmployees`
 - `CanManageCafeSettings`
 - `CanViewAuditLog`
 - `CanManageOrders` (`Cashier`, `Manager`, or the Administrator override)
+
+`CanWorkKitchen` is Kitchen or Administrator. `CanIssueOrders` is Cashier,
+Pickup, or Administrator. The separate policies keep kitchen preparation and
+customer handoff/payment mutually restricted while preserving Administrator
+override.
 
 Policies may allow Administrator automatically.
 

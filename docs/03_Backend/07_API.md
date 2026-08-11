@@ -1,7 +1,7 @@
 
 # REST API Specification
 
-Version: 1.6 (Sprint 3.7)
+Version: 1.7 (Sprint 3.8)
 
 Version 1 base URL:
 
@@ -15,13 +15,15 @@ Content type:
 application/json
 ```
 
-Implemented through Sprint 3.7: authentication and session endpoints, system
+Implemented through Sprint 3.8: authentication and session endpoints, system
 and health endpoints, the public menu, interactive customer configuration and
 local cart UI, authenticated customer checkout/orders, authorized menu
 administration, employee menu/order audit reads, secure image upload,
 metadata-mediated public media delivery, staff order confirmation/rejection,
-confirmed-order kitchen reads, and customer SignalR order updates. Kitchen
-state mutations, payment, and persisted notification endpoints remain planned.
+the active kitchen dashboard/API, ETA/preparation/ready transitions, pickup
+payment, completion, immutable status history, and customer/staff SignalR order
+updates. Online payment gateways, refunds, and persisted notification inboxes
+remain planned.
 
 Authentication:
 
@@ -784,9 +786,9 @@ Returns the complete immutable order snapshot. Its response shape is the same
 as `POST /orders`. It returns `404 ORDER_NOT_FOUND` when the order does not
 exist or is not owned by the caller.
 
-The detail and list contracts return `PendingConfirmation`, `Confirmed`,
-`Cancelled`, or `Rejected`, plus nullable `estimatedReadyAt` and
-`rejectReason`. They never expose confirming/rejecting employee identity.
+The detail and list contracts return every workflow status, nullable workflow
+timestamps, payment state, `estimatedReadyAt`, and `rejectReason`. Detail also
+returns append-only status history without employee identity.
 
 ## POST `/orders/{id}/cancel`
 
@@ -867,104 +869,93 @@ applies only to a confirmed order and uses the same time validation. A real
 change writes `EstimatedReadyTimeChanged` audit data with before/after values
 and publishes the matching customer SignalR event.
 
-## GET `/staff/kitchen/orders`
-
-Requires `CanWorkKitchen` (`Kitchen` or Administrator). Returns newest-first
-confirmed orders only, using the staff summary shape. This endpoint is backend
-support for Sprint 3.8; Sprint 3.7 deliberately provides no kitchen UI, kitchen
-status mutation, or kitchen SignalR update.
-
-### Request
-
-```json
-{
-  "estimatedReadyTime": "2026-08-05T15:00:00+05:00",
-  "rowVersion": "base64-version"
-}
-```
-
 ---
 
-# 11. Kitchen API
+# 11. Kitchen Workflow API
 
-Planned, not implemented in Sprint 3.2.
-
-Required role:
-
-- `Kitchen`
-- or `Administrator`
+Implemented in Sprint 3.8. The only forward status path is
+`Confirmed -> Preparing -> ReadyForPickup -> Completed`; stages cannot be
+skipped or repeated. Every mutation requires the current GUID `rowVersion`.
+Stale writes return `409 ORDER_VERSION_CONFLICT`; other illegal transitions
+return structured `409` ProblemDetails with a specific business code.
 
 ## GET `/staff/kitchen/orders`
 
-Returns:
+Requires `CanViewKitchen`: Kitchen, Cashier, Manager, Pickup, or Administrator.
+Customers and MenuManager-only employees are forbidden. It returns only
+`Confirmed`, `Preparing`, and `ReadyForPickup`, including immutable item/option
+snapshots, customer/pickup/comment data, ETA, workflow timestamps, payment
+state, and `rowVersion`.
 
-- Confirmed
-- Preparing
-- Ready for Pickup
+Query parameters are `status`, `createdFrom`, `createdTo`, `pickupFrom`,
+`pickupTo`, `orderNumber`, `page`, and `pageSize`. Date upper bounds are
+exclusive. Default order prioritizes requested pickup or ETA, then creation.
 
----
+## POST `/staff/kitchen/{id}/start`
 
-## POST `/staff/orders/{id}/start-preparing`
+Requires `CanWorkKitchen` (Kitchen or Administrator). Only a `Confirmed` order
+may transition to `Preparing`.
 
-### Request
+```json
+{ "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }
+```
+
+Stores preparation time/employee, appends history, audits before/after state,
+and emits `OrderPreparing` to the customer and staff dashboards.
+
+## POST `/staff/kitchen/{id}/ready`
+
+Requires `CanWorkKitchen`. Only `Preparing` may transition to
+`ReadyForPickup`. It stores ready time/employee, history, audit, and emits
+`OrderReady`.
+
+```json
+{ "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }
+```
+
+## PATCH `/staff/kitchen/{id}/eta`
+
+Requires `CanWorkKitchen`. ETA may change only while `Confirmed` or
+`Preparing`, must be later than now, today in the cafe time zone, and inside
+configured working hours. An unchanged value is rejected.
 
 ```json
 {
-  "rowVersion": "base64-version"
+  "estimatedReadyTime": "2026-08-11T11:45:00+05:00",
+  "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
----
-
-## POST `/staff/orders/{id}/mark-ready`
-
----
-
-## POST `/staff/orders/{id}/rollback`
-
-### Request
-
-```json
-{
-  "targetStatus": "Preparing",
-  "reason": "Status changed by mistake.",
-  "rowVersion": "base64-version"
-}
-```
-
-Only explicitly allowed rollback transitions are accepted.
-
----
-
-# 12. Pickup API
-
-Planned, not implemented in Sprint 3.2.
-
-Required role:
-
-- `Pickup`
-- or `Administrator`
-
-## GET `/staff/pickup/orders`
-
----
+The change is audited and emitted as `EstimatedReadyTimeChanged`.
 
 ## POST `/staff/orders/{id}/record-payment`
 
-### Request
+Requires `CanIssueOrders`: Cashier, Pickup, or Administrator. Kitchen and
+Manager cannot record payment. Only a ready `PayOnPickup` order is eligible.
 
 ```json
 {
-  "onSitePaymentMethod": "Cash",
-  "rowVersion": "base64-version"
+  "paymentMethodUsed": "Cash",
+  "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
----
+`paymentMethodUsed` is required and accepts `Cash` or `Card`. The operation
+stores payment time/employee, writes audit before/after data, rotates the row
+version, and emits `PaymentStatusChanged`. Online orders are already paid and
+reject this endpoint.
 
 ## POST `/staff/orders/{id}/complete`
 
-Fails when pay-on-pickup payment has not been recorded.
+Requires `CanIssueOrders`. Only `ReadyForPickup` may become `Completed`.
+`PayOnPickup` must already have a recorded payment; Online is assumed paid.
+
+```json
+{ "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }
+```
+
+Stores completion time/employee, appends history, audits the transition, and
+emits `OrderCompleted`. Completed orders no longer appear in the kitchen list.
 
 ---
 

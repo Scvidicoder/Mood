@@ -32,6 +32,7 @@ describe("customer order history", () => {
           itemQuantity: 1,
           createdAt: "2026-08-11T05:00:00.000Z",
           estimatedReadyAt: "2026-08-11T05:45:00.000Z",
+          paymentReceived: false,
         },
         {
           id: "rejected",
@@ -45,6 +46,7 @@ describe("customer order history", () => {
           itemQuantity: 2,
           createdAt: "2026-08-11T05:05:00.000Z",
           rejectReason: "Kitchen capacity is full.",
+          paymentReceived: true,
         },
       ],
       page: 1,

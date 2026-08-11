@@ -15,7 +15,7 @@ export function MyOrdersPage() {
   const orders = useQuery({
     queryKey: ["orders", "mine", 1],
     queryFn: ({ signal }) => getMyOrders(1, 100, signal),
-    refetchInterval: 15_000,
+    refetchInterval: connectionState === "Connected" ? false : 15_000,
   });
 
   return (
@@ -24,7 +24,7 @@ export function MyOrdersPage() {
         <div>
           <p className="eyebrow">Customer orders</p>
           <h1>My orders</h1>
-          <p>Track confirmation decisions and estimated ready times here.</p>
+          <p>Track confirmation, preparation, pickup readiness, and completion here.</p>
         </div>
         <span className={`connection-state connection-state--${connectionState.toLowerCase()}`}>
           Live updates: {connectionState}

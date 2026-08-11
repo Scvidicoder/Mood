@@ -48,18 +48,29 @@ describe("customer order SignalR updates", () => {
       orderNumber: "MP-20260811-00001",
       status: "Confirmed",
       estimatedReadyAt: "2026-08-11T05:45:00.000Z",
+      paymentReceived: false,
     };
     act(() => signalR.handlers.OrderConfirmed(event));
     expect(client.getQueryData<OrderDetail>(["orders", "order-1"])?.status)
       .toBe("Confirmed");
 
+    act(() => signalR.handlers.OrderPreparing({
+      ...event,
+      eventId: "event-2",
+      status: "Preparing",
+      preparationStartedAt: "2026-08-11T05:05:00.000Z",
+    }));
+    expect(client.getQueryData<OrderDetail>(["orders", "order-1"])?.status)
+      .toBe("Preparing");
+
     act(() => signalR.handlers.OrderRejected({
       ...event,
+      eventId: "event-2",
       status: "Rejected",
       rejectReason: "Duplicate should be ignored",
     }));
     expect(client.getQueryData<OrderDetail>(["orders", "order-1"])?.status)
-      .toBe("Confirmed");
+      .toBe("Preparing");
   });
 });
 
@@ -80,6 +91,8 @@ function pendingOrder(): OrderDetail {
     total: 24,
     currency: "TJS",
     createdAt: "2026-08-11T05:00:00.000Z",
+    paymentReceived: false,
+    statusHistory: [],
     items: [],
   };
 }

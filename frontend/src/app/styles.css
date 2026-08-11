@@ -3310,6 +3310,21 @@ textarea {
   background: #def3e9;
 }
 
+.order-status--preparing {
+  color: #6c4300;
+  background: #ffe8ad;
+}
+
+.order-status--readyforpickup {
+  color: #074d65;
+  background: #d7f1fa;
+}
+
+.order-status--completed {
+  color: #3f4650;
+  background: #e8ebee;
+}
+
 .order-status--rejected,
 .order-status--cancelled {
   color: #8b2c2c;
@@ -3473,6 +3488,182 @@ textarea {
   color: #5b6461;
 }
 
+.kitchen-heading {
+  align-items: flex-start;
+}
+
+.kitchen-filters {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.kitchen-filters label {
+  display: grid;
+  gap: 0.35rem;
+  color: #35403c;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.kitchen-filters input,
+.kitchen-filters select {
+  min-width: 0;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #b8c9c1;
+  border-radius: 0.5rem;
+  color: #173f34;
+  background: #fff;
+}
+
+.kitchen-order-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.kitchen-order-card {
+  padding: clamp(1rem, 3vw, 1.4rem);
+  border: 1px solid #d5ddd8;
+  border-top: 0.35rem solid #b9913d;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 0.3rem 1.2rem rgb(39 54 48 / 7%);
+}
+
+.kitchen-order-card--preparing {
+  border-top-color: #e59d25;
+}
+
+.kitchen-order-card--readyforpickup {
+  border-top-color: #2386a5;
+}
+
+.kitchen-item-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.kitchen-item-list section {
+  padding: 0.8rem;
+  border-radius: 0.65rem;
+  background: #f6f8f5;
+}
+
+.kitchen-item-list h3,
+.kitchen-item-list p,
+.kitchen-item-list ul {
+  margin: 0;
+}
+
+.kitchen-item-list p,
+.kitchen-item-list ul {
+  margin-top: 0.4rem;
+  color: #5b6461;
+}
+
+.kitchen-urgency,
+.kitchen-view-only {
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.55rem;
+  font-weight: 750;
+}
+
+.kitchen-urgency--normal,
+.kitchen-view-only {
+  color: #53605b;
+  background: #f0f3f1;
+}
+
+.kitchen-urgency--soon {
+  color: #705000;
+  background: #fff2c7;
+}
+
+.kitchen-urgency--delayed {
+  color: #8b2c2c;
+  background: #fbe2e2;
+}
+
+.kitchen-urgency--ready {
+  color: #074d65;
+  background: #d7f1fa;
+}
+
+.order-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0;
+  margin: 1.5rem 0;
+  list-style: none;
+}
+
+.order-progress li {
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  color: #7b8581;
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-align: center;
+}
+
+.order-progress li span {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #e7ece9;
+}
+
+.order-progress .order-progress__step--complete {
+  color: #12593f;
+}
+
+.order-progress .order-progress__step--complete span {
+  color: #fff;
+  background: #176448;
+}
+
+.customer-status-history {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.customer-status-history h2 {
+  font-size: 1.1rem;
+}
+
+.order-status-history {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.order-status-history li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  padding: 0.75rem;
+  border-left: 0.25rem solid #79a593;
+  border-radius: 0.4rem;
+  background: #f6f8f5;
+}
+
+.order-status-history li span {
+  color: #65706c;
+  font-size: 0.82rem;
+}
+
+.order-status-history li p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 @media (min-width: 48rem) {
   .customer-order-grid,
   .staff-order-grid {
@@ -3482,10 +3673,27 @@ textarea {
   .staff-order-detail-layout {
     grid-template-columns: minmax(0, 1.3fr) minmax(15rem, 0.7fr);
   }
+
+  .kitchen-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .kitchen-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 76rem) {
   .staff-order-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .kitchen-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+
+  .kitchen-order-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -3493,6 +3701,7 @@ textarea {
 @media (max-width: 39.99rem) {
   .customer-order-card .button,
   .staff-order-actions .button,
+  .kitchen-actions .button,
   .order-success-actions .button {
     width: 100%;
   }

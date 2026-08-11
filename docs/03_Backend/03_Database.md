@@ -1,6 +1,6 @@
 # Database Design
 
-Version: 1.6 (Sprint 3.7 staff order management)
+Version: 1.7 (Sprint 3.8 kitchen workflow)
 
 ## Overview
 
@@ -12,7 +12,9 @@ durable Telegram update idempotency. Sprint 3.3 adds filesystem media behavior
 without changing the database schema: PostgreSQL continues to store metadata
 only. Sprint 3.5 adds an anonymous browser-local cart. Sprint 3.6 adds the
 first persistent customer orders. Sprint 3.7 adds staff confirmation,
-rejection, estimated-ready-time, and employee attribution fields.
+rejection, estimated-ready-time, and employee attribution fields. Sprint 3.8
+adds the forward-only kitchen lifecycle, pickup payment and completion
+attribution, and immutable order status history.
 
 The database is designed for one cafe. Order items and options store immutable
 menu snapshots, so historical prices and names do not depend on later menu
@@ -292,7 +294,8 @@ preserves history.
 - `Id` (`uuid`, primary key)
 - `CustomerId` (required foreign key)
 - `OrderNumber` (required, unique, maximum 32; e.g. `MP-20260807-00015`)
-- `Status` (`PendingConfirmation`, `Confirmed`, `Cancelled`, or `Rejected`)
+- `Status` (`PendingConfirmation`, `Confirmed`, `Preparing`,
+  `ReadyForPickup`, `Completed`, `Cancelled`, or `Rejected`)
 - `PaymentMethod` (`PayOnPickup` or `Online`)
 - `PickupMode` (`AsSoonAsPossible` or `Scheduled`)
 - `RequestedPickupTime` (null for ASAP; required for Scheduled)
@@ -304,13 +307,35 @@ preserves history.
 - `ConfirmedByEmployeeId`, `ConfirmedAt` (nullable confirmation attribution)
 - `RejectedByEmployeeId`, `RejectedAt` (nullable rejection attribution)
 - `RejectReason` (nullable, maximum 500; required for rejection)
+- `PreparationStartedAt`, `PreparationStartedByEmployeeId` (nullable)
+- `ReadyAt`, `ReadyByEmployeeId` (nullable)
+- `PaymentReceived` and nullable `PaymentMethodUsed` (`Cash` or `Card`)
+- `PaymentReceivedAt`, `PaymentReceivedByEmployeeId` (nullable)
+- `CompletedAt`, `CompletedByEmployeeId` (nullable)
 - `CreatedAt`
 - `RowVersion` (`uuid`)
 
 `DiscountTotal` is currently zero. Database checks require non-negative totals,
 `Total = Subtotal - DiscountTotal`, and a pickup time only for scheduled
 orders. Staff services enforce legal status transitions, ready-time business
-hours, and mandatory rejection reasons before the atomic order/audit save.
+hours, mandatory rejection reasons, and payment-before-completion before the
+atomic order/history/audit save. Online orders are initialized as paid. A
+pay-on-pickup order can be completed only after Cash or Card receipt is stored.
+
+### `OrderStatusHistory`
+
+- `Id` (`uuid`, primary key)
+- `OrderId` (required foreign key)
+- `OldStatus` (nullable only for the initial creation/migration entry)
+- `NewStatus`
+- `Timestamp` (`timestamp with time zone`)
+- `EmployeeId` (nullable for customer/system transitions)
+- `CorrelationId` (required, maximum 100)
+- `Reason` (nullable, maximum 500)
+
+Rows are append-only. There is no update or delete API. Every application
+status transition appends one row in the same EF unit as the order mutation;
+customer DTOs expose status, timestamp, and reason without employee identity.
 
 ### `OrderItems`
 
@@ -362,7 +387,10 @@ GUID remains the primary key.
 | OptionValue to ProductOptionValue | one-to-many | `Restrict` |
 | Employee to EmployeeActionLog | one-to-many | `Restrict` |
 | Employee to confirmed/rejected Order attribution | one-to-many | `Restrict` |
+| Employee to preparation/ready/payment/completion Order attribution | one-to-many | `Restrict` |
 | Customer to Order | one-to-many | `Restrict` |
+| Order to OrderStatusHistory | one-to-many | `Cascade` |
+| Employee to OrderStatusHistory | one-to-many | `Restrict` |
 | Order to OrderItem | one-to-many | `Cascade` |
 | OrderItem to OrderItemOption | one-to-many | `Cascade` |
 
@@ -401,6 +429,7 @@ option-group assignments, and option-value assignments.
 - `Orders(Status, CreatedAt)` for operational staff boards
 - `OrderItems(OrderId)`
 - `OrderItemOptions(OrderItemId, DisplayOrder)`
+- `OrderStatusHistory(OrderId, Timestamp)`
 
 ### Unique indexes
 
@@ -497,3 +526,8 @@ run in Testing or Production.
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
 - `20260811061908_Sprint37StaffOrderManagement`
+- `20260811073656_Sprint38KitchenWorkflow`
+
+The Sprint 3.8 migration works on a clean database and over Sprint 3.7. During
+upgrade it marks existing `Online` orders paid and backfills one baseline
+history row for every existing order before new transitions are accepted.

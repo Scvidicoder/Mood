@@ -124,11 +124,17 @@ Clients receive only events for authorized groups.
 
 SignalR payloads never contain confidential data unrelated to the recipient.
 
-## Sprint 3.7 implementation boundary
+## Sprint 3.8 implementation boundary
 
-Sprint 3.7 publishes `OrderConfirmed`, `OrderRejected`, and
-`EstimatedReadyTimeChanged` to the authenticated `customer:{customerId}` group.
-Payloads contain `EventId`, `Timestamp`, `EntityId`, order number/status,
-estimated ready time, and optional rejection reason. They contain no employee
-identity. Kitchen SignalR delivery, persisted notifications, Telegram order
-messages, browser notifications, and later order statuses remain future work.
+The implemented order events are `OrderConfirmed`, `OrderRejected`,
+`OrderPreparing`, `EstimatedReadyTimeChanged`, `OrderReady`,
+`PaymentStatusChanged`, and `OrderCompleted`. Each is sent to the authenticated
+`customer:{customerId}` group and `staff:all`. Payloads contain `EventId`,
+`Timestamp`, `EntityId`, order number/status, ETA, workflow timestamps,
+rejection reason, and payment state. They contain no employee identity.
+
+Customer and staff clients reconnect automatically, invalidate affected query
+caches after reconnect, and ignore duplicate event IDs. Their HTTP polling is
+disabled while SignalR is connected and runs only as a disconnected fallback.
+Persisted notification inboxes, Telegram order messages, browser notifications,
+and guaranteed outbox delivery remain future work.

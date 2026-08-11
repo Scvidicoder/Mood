@@ -13,10 +13,6 @@ public interface IStaffOrderService
         Guid id,
         CancellationToken cancellationToken);
 
-    Task<PagedResponse<StaffOrderSummaryDto>> GetKitchenOrdersAsync(
-        PaginationQuery query,
-        CancellationToken cancellationToken);
-
     Task<StaffOrderDetailDto> ConfirmAsync(
         Guid id,
         ConfirmOrderRequest request,

@@ -180,15 +180,17 @@ limits, not a stock reservation or per-customer purchasing policy.
 
 Sprint 3.6 persists immutable menu/contact/price/availability snapshots and
 stores `PayOnPickup` or `Online` as an intent. Sprint 3.7 adds pending-only
-customer cancellation, staff confirmation/rejection, estimated-ready-time
-changes, customer tracking, and customer SignalR events. It intentionally does
-not implement a payment provider, payment status, kitchen/pickup boards,
-Preparing/Ready/Completed, persisted notifications, promotions, loyalty,
-delivery, or refunds. Each addition needs explicit transition, authorization,
-audit, retry, and privacy rules.
+customer cancellation and staff reception decisions. Sprint 3.8 adds the
+forward-only kitchen workflow, a kitchen board, Cash/Card pickup receipt,
+completion, immutable status history, and customer/staff SignalR events.
+It intentionally does not implement an online payment provider, refunds,
+persisted notifications, a separate pickup board, promotions, loyalty,
+delivery, or inventory. Each future addition needs explicit transition,
+authorization, audit, retry, and privacy rules.
 
 SignalR publication currently occurs after the atomic database/audit save and
-is best-effort; failures are logged while customer polling reconciles state.
+is best-effort; failures are logged while customer/staff fallback polling
+reconciles state only when disconnected.
 Before order events must be guaranteed across process crashes or drive external
 side effects, add a transactional outbox with idempotent dispatch. Do not make
 the order mutation appear to fail after its database commit.

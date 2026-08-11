@@ -3,6 +3,9 @@ import type { OrderStatus, PaymentMethod, PickupMode } from "../types/orders";
 const statusLabels: Record<OrderStatus, string> = {
   PendingConfirmation: "Pending confirmation",
   Confirmed: "Confirmed",
+  Preparing: "Preparing",
+  ReadyForPickup: "Ready for pickup",
+  Completed: "Completed",
   Cancelled: "Cancelled",
   Rejected: "Rejected",
 };

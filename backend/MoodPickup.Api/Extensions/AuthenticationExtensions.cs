@@ -96,8 +96,16 @@ public static class AuthenticationExtensions
                 AuthenticationConstants.Roles.Kitchen);
             AddEmployeePolicy(
                 options,
-                AuthenticationConstants.Policies.CanIssueOrders,
+                AuthenticationConstants.Policies.CanViewKitchen,
+                AuthenticationConstants.Roles.Kitchen,
+                AuthenticationConstants.Roles.Cashier,
+                AuthenticationConstants.Roles.Manager,
                 AuthenticationConstants.Roles.Pickup);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanIssueOrders,
+                AuthenticationConstants.Roles.Pickup,
+                AuthenticationConstants.Roles.Cashier);
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanManageMenu,

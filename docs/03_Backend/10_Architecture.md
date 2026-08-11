@@ -276,28 +276,38 @@ four-hour scheduling window, and 15-minute intervals by default. Replacing its
 configuration changes checkout validation without an API contract change. A
 staff configuration UI is intentionally outside this sprint.
 
-### Staff order workflow and real-time customer updates
+### Staff and kitchen workflow with real-time updates
 
-`StaffOrdersController` delegates operational rules to `IStaffOrderService` /
-`StaffOrderService`. The `CanManageOrders` policy admits only Administrator,
-Cashier, and Manager employees; customer tokens and MenuManager-only employees
-cannot reach these endpoints. The kitchen read controller retains the existing
-`CanWorkKitchen` policy and projects only `Confirmed` orders, providing backend
-support without implementing a kitchen board or kitchen SignalR events.
+`StaffOrdersController` delegates reception rules to `IStaffOrderService` /
+`StaffOrderService`. `StaffKitchenOrdersController` and
+`StaffOrderCompletionController` delegate preparation, ETA, payment, and
+completion to `IOrderWorkflowService` / `OrderWorkflowService`. This keeps the
+established MVC service/controller structure without repositories, MediatR,
+or another project layer.
 
-Every staff mutation carries the current order GUID row version. Pre-detected
-stale requests and EF races return `409 ORDER_VERSION_CONFLICT`. Confirmation,
-rejection, and ready-time changes add an `EmployeeActionLog` to the same
-DbContext save as the order mutation, preserving correlation ID, employee,
-before values, and after values. Confirmation requires a ready time later than
-now, today in the configured cafe time zone, and inside configured working
-hours. Rejection is allowed only while pending and requires a reason.
+`CanViewKitchen` admits Kitchen, Cashier, Manager, Pickup, and Administrator;
+only `CanWorkKitchen` (Kitchen/Administrator) mutates preparation state.
+`CanIssueOrders` (Cashier/Pickup/Administrator) records pickup payment and
+completion. Customer and MenuManager-only tokens cannot reach these endpoints.
 
-`SignalROrderRealtimeNotifier` publishes `OrderConfirmed`, `OrderRejected`, and
-`EstimatedReadyTimeChanged` only to `customer:{customerId}`. Payloads contain
-an event ID, timestamp, order identity/status, ready time, and rejection reason,
-never employee data. Customer pages update TanStack Query immediately, ignore
-duplicate event IDs, reconnect automatically, and poll as a fallback.
+Every mutation carries the current order GUID row version. Pre-detected stale
+requests and EF races return `409 ORDER_VERSION_CONFLICT`. Confirmation,
+rejection, preparation, ready, ETA, payment, and completion add an
+`EmployeeActionLog` to the same DbContext save as the order mutation,
+preserving correlation ID, employee, before values, and after values. Every
+status transition also inserts append-only `OrderStatusHistory`. The legal
+forward path is PendingConfirmation -> Confirmed -> Preparing ->
+ReadyForPickup -> Completed; customer cancellation and cafe rejection remain
+pending-only. Pay-on-pickup completion requires a separately recorded Cash or
+Card receipt; Online orders are initialized paid.
+
+`SignalROrderRealtimeNotifier` publishes confirmation, rejection, preparation,
+ETA, ready, payment, and completion events to `customer:{customerId}` and
+`staff:all`. Payloads contain an event ID, timestamp, order identity/status,
+workflow timestamps, ready time, rejection reason, and payment state, never
+employee data. Customer and staff pages invalidate/update TanStack Query,
+ignore duplicate event IDs, reconnect automatically, and poll only while the
+connection is unavailable.
 
 ## File storage
 
@@ -342,6 +352,9 @@ immutable caching. Physical paths are never returned.
 - Sprint 3.7 adds staff transition/audit/notification/concurrency unit tests,
   PostgreSQL authorization and workflow tests, plus React staff-dialog,
   navigation, customer-status, and SignalR cache-update coverage.
+- Sprint 3.8 adds forward workflow/history/payment/ETA/concurrency unit tests,
+  real-PostgreSQL policy and endpoint tests, and React kitchen, completion,
+  navigation, responsive-state, and expanded SignalR coverage.
 - Docker smoke validation covers the complete composed stack.
 
 No EF Core InMemory tests are used to claim relational menu behavior.
@@ -362,7 +375,7 @@ boundaries, and asynchronous APIs accept cancellation tokens where relevant.
 
 ## Future evolution
 
-Later work can add kitchen preparation/ready/completion, persisted notification
-history, payment providers, discounts, delivery, cloud media storage,
+Later work can add persisted notification history, payment providers, refunds,
+discounts, delivery, cloud media storage,
 responsive image derivatives, and full-text search without replacing the
 current order API contract or local cart selection model.

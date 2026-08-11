@@ -42,6 +42,7 @@ public static class AuthenticationConstants
         public const string Employee = "Employee";
         public const string CanReceiveOrders = "CanReceiveOrders";
         public const string CanWorkKitchen = "CanWorkKitchen";
+        public const string CanViewKitchen = "CanViewKitchen";
         public const string CanIssueOrders = "CanIssueOrders";
         public const string CanManageMenu = "CanManageMenu";
         public const string CanManageEmployees = "CanManageEmployees";

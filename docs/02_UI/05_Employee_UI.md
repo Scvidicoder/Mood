@@ -181,11 +181,10 @@ After confirmation:
 - The order appears on the kitchen board
 - The card disappears from the new-order list for all other employees
 
-The Sprint 3.7 `/staff/orders` dashboard is available to Administrator,
-Cashier, and Manager. MenuManager alone cannot view or mutate orders. It uses
-responsive cards, status filtering, 10-second refresh fallback, order details,
-and GUID row-version conflict handling. Kitchen, Preparing, Ready, and
-Completed UI remain Sprint 3.8 work.
+The `/staff/orders` dashboard is available to Administrator, Cashier, and
+Manager. MenuManager alone cannot view or mutate orders. It uses responsive
+cards, all-status filtering, disconnected refresh fallback, order details,
+payment/completion actions where permitted, and GUID row-version conflicts.
 
 ### 7.6 Sorting
 
@@ -226,18 +225,16 @@ Fields:
 - Other options
 - Order comment indicator
 
-Do not show payment information on the main kitchen card.
+Show payment method and whether pickup payment is still due. Kitchen employees
+cannot mutate payment state.
 
 Customer phone number is available only in order details.
 
 ### 8.4 Actions
 
 - Start preparing
-- Set estimated ready time
 - Change estimated ready time
 - Mark ready
-- Open details
-- Return to previous stage
 
 ### 8.5 Sequential Status Rules
 
@@ -247,12 +244,8 @@ Confirmed → Preparing → Ready for Pickup
 
 Stages cannot be skipped.
 
-Allowed rollback:
-
-Preparing → Confirmed
-Ready for Pickup → Preparing
-
-Rollback requires a reason.
+Sprint 3.8 has no rollback action. Repeated, skipped, or reverse transitions
+return ProblemDetails and leave the card unchanged.
 
 ### 8.6 Urgency Indicators
 
@@ -304,7 +297,7 @@ Before completion:
 
 1. Employee selects received payment type:
    - Cash
-   - Bank Card
+   - Card
 2. Payment is marked as received.
 3. Complete button becomes available.
 
@@ -320,9 +313,7 @@ When employee marks the order completed:
 
 ### 9.6 Rollback
 
-Completed → Ready for Pickup is allowed.
-
-Rollback requires a reason.
+Completion rollback is not available in Sprint 3.8.
 
 ## 10. Order Details
 
@@ -363,13 +354,11 @@ Kitchen:
 - Start preparing
 - Change time
 - Mark ready
-- Roll back kitchen status
 
 Pickup:
 
 - Record payment
 - Complete
-- Roll back completion
 
 Administrator:
 

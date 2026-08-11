@@ -22,7 +22,26 @@ internal static class OrderDtoMapper
             order.CreatedAt,
             order.EstimatedReadyAt,
             order.RejectReason,
+            order.PreparationStartedAt,
+            order.ReadyAt,
+            order.CompletedAt,
+            order.PaymentReceived,
+            order.PaymentMethodUsed,
+            ToStatusHistory(order),
             ToItems(order));
+    }
+
+    public static IReadOnlyList<OrderStatusHistoryDto> ToStatusHistory(Order order)
+    {
+        return order.StatusHistory
+            .OrderBy(history => history.Timestamp)
+            .ThenBy(history => history.Id)
+            .Select(history => new OrderStatusHistoryDto(
+                history.OldStatus,
+                history.NewStatus,
+                history.Timestamp,
+                history.Reason))
+            .ToArray();
     }
 
     public static IReadOnlyList<OrderItemDto> ToItems(Order order)

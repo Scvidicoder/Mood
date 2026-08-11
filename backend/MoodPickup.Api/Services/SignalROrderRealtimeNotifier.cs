@@ -44,14 +44,54 @@ public sealed class SignalROrderRealtimeNotifier(
             cancellationToken);
     }
 
+    public Task OrderPreparingAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync(customerId, "OrderPreparing", notification, cancellationToken);
+    }
+
+    public Task OrderReadyAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync(customerId, "OrderReady", notification, cancellationToken);
+    }
+
+    public Task PaymentStatusChangedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync(
+            customerId,
+            "PaymentStatusChanged",
+            notification,
+            cancellationToken);
+    }
+
+    public Task OrderCompletedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync(customerId, "OrderCompleted", notification, cancellationToken);
+    }
+
     private Task SendAsync(
         Guid customerId,
         string eventName,
         OrderRealtimeEventDto notification,
         CancellationToken cancellationToken)
     {
-        return hubContext.Clients
-            .Group($"customer:{customerId}")
-            .SendAsync(eventName, notification, cancellationToken);
+        return Task.WhenAll(
+            hubContext.Clients
+                .Group($"customer:{customerId}")
+                .SendAsync(eventName, notification, cancellationToken),
+            hubContext.Clients
+                .Group("staff:all")
+                .SendAsync(eventName, notification, cancellationToken));
     }
 }

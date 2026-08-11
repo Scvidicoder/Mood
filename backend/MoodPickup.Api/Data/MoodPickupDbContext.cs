@@ -45,6 +45,8 @@ public sealed class MoodPickupDbContext(DbContextOptions<MoodPickupDbContext> op
 
     public DbSet<OrderDailySequence> OrderDailySequences => Set<OrderDailySequence>();
 
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         PrepareMenuEntities();

@@ -48,9 +48,39 @@ public sealed class Order : IHasCreatedAt, IHasConcurrencyToken
 
     public string? RejectReason { get; set; }
 
+    public DateTimeOffset? PreparationStartedAt { get; set; }
+
+    public Guid? PreparationStartedByEmployeeId { get; set; }
+
+    public Employee? PreparationStartedByEmployee { get; set; }
+
+    public DateTimeOffset? ReadyAt { get; set; }
+
+    public Guid? ReadyByEmployeeId { get; set; }
+
+    public Employee? ReadyByEmployee { get; set; }
+
+    public bool PaymentReceived { get; set; }
+
+    public PaymentMethodUsed? PaymentMethodUsed { get; set; }
+
+    public DateTimeOffset? PaymentReceivedAt { get; set; }
+
+    public Guid? PaymentReceivedByEmployeeId { get; set; }
+
+    public Employee? PaymentReceivedByEmployee { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
+
+    public Guid? CompletedByEmployeeId { get; set; }
+
+    public Employee? CompletedByEmployee { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public Guid RowVersion { get; set; }
 
     public ICollection<OrderItem> Items { get; set; } = [];
+
+    public ICollection<OrderStatusHistory> StatusHistory { get; set; } = [];
 }

@@ -421,14 +421,46 @@ tokens remain cookie-only and are unrelated to menu concurrency.
 5. Reject the other pending order with a reason. Verify the customer My Orders
    and detail pages show Rejected and the reason. Verify a confirmed order
    cannot be rejected and cannot be customer-cancelled.
-6. Connect as Kitchen and call `GET /api/v1/staff/kitchen/orders`; only confirmed
-   orders must appear. Do not expect a kitchen UI or kitchen SignalR event.
+6. Connect as Kitchen and call `GET /api/v1/staff/kitchen/orders`; confirmed
+   orders must appear. Sprint 3.8 extends this endpoint and UI as verified below.
 7. Inspect `EmployeeActionLogs`: confirmation, rejection, and time changes have
    employee identity, correlation ID, and before/after JSON. Customer responses
    and SignalR payloads must contain no employee identity.
 8. Apply `Sprint37StaffOrderManagement` over a Sprint 3.6 database and from a
    clean database. `dotnet ef migrations has-pending-model-changes` must report
    no pending changes in both cases.
+
+### Manual Sprint 3.8 verification
+
+1. Confirm a pay-on-pickup order, sign in with the Kitchen role, and open
+   `/staff/kitchen`. Verify the card shows customer, pickup/ETA, products,
+   options, comments, payment state, elapsed time, and urgency.
+2. Verify Cashier, Manager, and Pickup can view the kitchen board but see no
+   kitchen action buttons. Customer and MenuManager API requests receive `403`.
+3. Start preparation, change ETA to a later time today inside working hours,
+   and mark ready. Attempt each action with a stale row version and verify
+   `409 ORDER_VERSION_CONFLICT`. Verify skips and repeats return `409`
+   ProblemDetails and do not add history.
+4. Keep the owning customer's detail and My Orders pages open. Verify Preparing,
+   ETA, Ready for Pickup, payment, and Completed changes arrive through SignalR
+   without polling while connected. Disconnect the hub and verify fallback
+   polling resumes.
+5. As Kitchen, verify payment and completion endpoints return `403`. As Manager,
+   verify completion returns `403`. As Cashier, verify completion is disabled
+   until Cash or Card is recorded for pay-on-pickup; then complete successfully.
+   Verify an Online ready order can complete without a payment mutation.
+6. Inspect `Orders`, `OrderStatusHistory`, and `EmployeeActionLogs`. Confirm
+   sequential history, employee attribution, correlation IDs, and before/after
+   audit JSON for start, ETA, ready, payment, and completion. Customer JSON and
+   SignalR payloads must not expose employee identity.
+7. Verify Completed, Rejected, and Cancelled orders never appear in the kitchen
+   list. Exercise status, created-date, pickup-date, and order-number filters at
+   desktop and 390x844 mobile sizes with no horizontal overflow.
+8. Apply `Sprint38KitchenWorkflow` from a clean database and over a database at
+   `Sprint37StaffOrderManagement`. Existing Online orders must be marked paid,
+   existing orders must receive a baseline history row, and
+   `dotnet ef migrations has-pending-model-changes` must report no pending
+   changes.
 
 ## Troubleshooting
 
