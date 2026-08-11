@@ -137,12 +137,12 @@ in-memory access-token, cancellation, and `ProblemDetails` behavior.
 ## Frontend end-to-end testing
 
 Vitest and React Testing Library cover staff authorization, administrative
-workflows, Sprint 3.4 public-menu behavior, Sprint 3.5 configuration/cart
-behavior, and Sprint 3.6 checkout success/failure/navigation/cart-clearing
-behavior at the HTTP boundary and pure-model layers. The backend also has
-order snapshot/validation unit tests and real-PostgreSQL ownership/rollback
-coverage. These sprints include documented manual real-browser passes across
-the Docker stack.
+workflows, Sprint 3.4 public-menu behavior, Sprint 3.5 configuration/cart,
+Sprint 3.6 checkout, and Sprint 3.7 staff order/customer SignalR behavior at
+the HTTP boundary and pure-model layers. The backend also has order
+snapshot/transition/notification unit tests and real-PostgreSQL
+ownership/authorization/concurrency coverage. These sprints include documented
+manual real-browser passes across the Docker stack.
 An automated browser-driven suite for responsive layout, network throttling,
 storage failure, and keyboard-only accessibility remains future work.
 
@@ -176,14 +176,22 @@ configurations. Sprint 3.6 mirrors these as checkout request bounds (1-99 per
 item, at most 100 item configurations). They are request/operational safety
 limits, not a stock reservation or per-customer purchasing policy.
 
-## Checkout operations and future order workflow
+## Checkout operations and order workflow boundary
 
-Sprint 3.6 persists immutable menu/contact/price/availability snapshots, validates the
-configured four-hour pickup window, and stores `PayOnPickup` or `Online` as an
-intent. It intentionally does not implement a payment provider, payment
-status, cancellation action, staff reception/kitchen/pickup boards, tracking,
-notifications, promotions, loyalty, delivery, or refunds. Each addition needs
-explicit status-transition, authorization, audit, retry, and privacy rules.
+Sprint 3.6 persists immutable menu/contact/price/availability snapshots and
+stores `PayOnPickup` or `Online` as an intent. Sprint 3.7 adds pending-only
+customer cancellation, staff confirmation/rejection, estimated-ready-time
+changes, customer tracking, and customer SignalR events. It intentionally does
+not implement a payment provider, payment status, kitchen/pickup boards,
+Preparing/Ready/Completed, persisted notifications, promotions, loyalty,
+delivery, or refunds. Each addition needs explicit transition, authorization,
+audit, retry, and privacy rules.
+
+SignalR publication currently occurs after the atomic database/audit save and
+is best-effort; failures are logged while customer polling reconciles state.
+Before order events must be guaranteed across process crashes or drive external
+side effects, add a transactional outbox with idempotent dispatch. Do not make
+the order mutation appear to fail after its database commit.
 
 Working hours live in validated `Checkout` deployment configuration and are
 read through `IOptionsMonitor`, so a reload-capable configuration source can

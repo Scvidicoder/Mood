@@ -1,6 +1,10 @@
 import type { AuthSession } from "../types/auth";
 
-export type StaffCapability = "employee" | "manageMenu" | "viewAuditLog";
+export type StaffCapability =
+  | "employee"
+  | "manageMenu"
+  | "manageOrders"
+  | "viewAuditLog";
 
 export function hasStaffCapability(
   session: AuthSession | null,
@@ -22,6 +26,14 @@ export function hasStaffCapability(
   const isAdministrator = session.roles.includes("Administrator");
   if (capability === "manageMenu") {
     return isAdministrator || session.roles.includes("MenuManager");
+  }
+
+  if (capability === "manageOrders") {
+    return (
+      isAdministrator ||
+      session.roles.includes("Cashier") ||
+      session.roles.includes("Manager")
+    );
   }
 
   return isAdministrator;

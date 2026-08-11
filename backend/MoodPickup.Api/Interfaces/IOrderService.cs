@@ -16,4 +16,8 @@ public interface IOrderService
     Task<PagedResponse<OrderSummaryDto>> GetMineAsync(
         OrderListQuery query,
         CancellationToken cancellationToken);
+
+    Task<OrderDetailDto> CancelAsync(
+        Guid id,
+        CancellationToken cancellationToken);
 }

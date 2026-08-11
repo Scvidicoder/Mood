@@ -140,7 +140,7 @@ public sealed class OrderService(
                 await transaction.CommitAsync(cancellationToken);
             }
 
-            return ToDetailDto(order);
+            return OrderDtoMapper.ToCustomerDetail(order);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -179,7 +179,7 @@ public sealed class OrderService(
                 "Order not found",
                 "ORDER_NOT_FOUND");
 
-        return ToDetailDto(order);
+        return OrderDtoMapper.ToCustomerDetail(order);
     }
 
     public async Task<PagedResponse<OrderSummaryDto>> GetMineAsync(
@@ -207,7 +207,9 @@ public sealed class OrderService(
                 order.Total,
                 order.Currency,
                 order.Items.Sum(item => item.Quantity),
-                order.CreatedAt))
+                order.CreatedAt,
+                order.EstimatedReadyAt,
+                order.RejectReason))
             .ToListAsync(cancellationToken);
 
         return new PagedResponse<OrderSummaryDto>(
@@ -216,6 +218,45 @@ public sealed class OrderService(
             query.PageSize,
             totalCount,
             MenuServiceSupport.TotalPages(totalCount, query.PageSize));
+    }
+
+    public async Task<OrderDetailDto> CancelAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var customerId = currentUser.GetRequiredCustomerId();
+        var order = await dbContext.Orders
+            .Include(item => item.Items)
+                .ThenInclude(item => item.Options)
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.CustomerId == customerId,
+                cancellationToken)
+            ?? throw new ApiProblemException(
+                StatusCodes.Status404NotFound,
+                "not_found",
+                "Order not found",
+                "ORDER_NOT_FOUND");
+
+        if (order.Status != OrderStatus.PendingConfirmation)
+        {
+            throw new ApiProblemException(
+                StatusCodes.Status409Conflict,
+                "business_rule_violation",
+                "Only an order awaiting confirmation can be cancelled",
+                "ORDER_CANNOT_BE_CANCELLED");
+        }
+
+        order.Status = OrderStatus.Cancelled;
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw OrderConcurrencyConflict();
+        }
+
+        return OrderDtoMapper.ToCustomerDetail(order);
     }
 
     private async Task<IReadOnlyList<ValidatedOrderItem>> ValidateItemsAsync(
@@ -508,46 +549,14 @@ public sealed class OrderService(
             "Refresh the cart and try checkout again.");
     }
 
-    private static OrderDetailDto ToDetailDto(Order order)
+    private static ApiProblemException OrderConcurrencyConflict()
     {
-        return new OrderDetailDto(
-            order.Id,
-            order.OrderNumber,
-            order.Status,
-            order.PaymentMethod,
-            order.PickupMode,
-            order.RequestedPickupTime,
-            order.Comment,
-            order.Subtotal,
-            order.DiscountTotal,
-            order.Total,
-            order.Currency,
-            order.CreatedAt,
-            order.Items
-                .OrderBy(item => item.Id)
-                .Select(item => new OrderItemDto(
-                    item.ProductId,
-                    item.ProductName,
-                    item.IsAvailableAtPurchase,
-                    item.BasePrice,
-                    item.FinalPrice,
-                    item.Calories,
-                    item.VolumeMilliliters,
-                    item.WeightGrams,
-                    item.Quantity,
-                    item.Comment,
-                    item.Options
-                        .OrderBy(option => option.DisplayOrder)
-                        .ThenBy(option => option.OptionGroupName)
-                        .Select(option => new OrderItemOptionDto(
-                            option.OptionGroupName,
-                            option.OptionValueName,
-                            option.PriceModifier,
-                            option.CaloriesModifier,
-                            option.VolumeModifier,
-                            option.DisplayOrder))
-                        .ToArray()))
-                .ToArray());
+        return new ApiProblemException(
+            StatusCodes.Status409Conflict,
+            "concurrency_conflict",
+            "The order was changed while the request was being processed",
+            "ORDER_VERSION_CONFLICT",
+            "Refresh the order and try again.");
     }
 
     private sealed record ValidatedOrderItem(

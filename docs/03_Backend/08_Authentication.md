@@ -1,7 +1,7 @@
 
 # Authentication and Authorization
 
-Version: 1.1 (Sprint 3.6 checkout authorization)
+Version: 1.2 (Sprint 3.7 staff order authorization)
 
 ## 1. Purpose
 
@@ -433,6 +433,8 @@ Supported roles:
 - Kitchen
 - Pickup
 - MenuManager
+- Cashier
+- Manager
 
 An employee may have multiple roles.
 
@@ -476,6 +478,15 @@ Full access to all staff and admin functions.
 - Manage availability
 - Upload menu images
 
+### Cashier and Manager
+
+- View staff order lists and complete order details
+- Confirm pending orders and assign estimated ready time
+- Reject pending orders with a reason
+- Change the estimated ready time of confirmed orders
+
+`MenuManager` alone has no order-management access.
+
 ## 6.4 Policy-Based Authorization
 
 ASP.NET Core authorization policies should be used instead of role checks scattered across controllers.
@@ -489,6 +500,7 @@ Examples:
 - `CanManageEmployees`
 - `CanManageCafeSettings`
 - `CanViewAuditLog`
+- `CanManageOrders` (`Cashier`, `Manager`, or the Administrator override)
 
 Policies may allow Administrator automatically.
 

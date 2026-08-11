@@ -206,7 +206,8 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
                      AuthenticationConstants.Policies.CanManageMenu,
                      AuthenticationConstants.Policies.CanManageEmployees,
                      AuthenticationConstants.Policies.CanManageCafeSettings,
-                     AuthenticationConstants.Policies.CanViewAuditLog
+                     AuthenticationConstants.Policies.CanViewAuditLog,
+                     AuthenticationConstants.Policies.CanManageOrders
                  })
         {
             Assert.True((await authorization.AuthorizeAsync(
@@ -223,6 +224,22 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
             kitchen,
             resource: null,
             AuthenticationConstants.Policies.CanManageMenu)).Succeeded);
+
+        var cashier = CreateEmployeePrincipal(AuthenticationConstants.Roles.Cashier);
+        var manager = CreateEmployeePrincipal(AuthenticationConstants.Roles.Manager);
+        var menuManager = CreateEmployeePrincipal(AuthenticationConstants.Roles.MenuManager);
+        Assert.True((await authorization.AuthorizeAsync(
+            cashier,
+            resource: null,
+            AuthenticationConstants.Policies.CanManageOrders)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            manager,
+            resource: null,
+            AuthenticationConstants.Policies.CanManageOrders)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            menuManager,
+            resource: null,
+            AuthenticationConstants.Policies.CanManageOrders)).Succeeded);
     }
 
     private async Task<RequestCustomerCodeResponse> RequestCodeAsync(string phoneNumber)

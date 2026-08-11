@@ -21,6 +21,8 @@ public static class AuthenticationConstants
         public const string Kitchen = "Kitchen";
         public const string Pickup = "Pickup";
         public const string MenuManager = "MenuManager";
+        public const string Cashier = "Cashier";
+        public const string Manager = "Manager";
 
         public static readonly string[] All =
         [
@@ -28,7 +30,9 @@ public static class AuthenticationConstants
             OrderReception,
             Kitchen,
             Pickup,
-            MenuManager
+            MenuManager,
+            Cashier,
+            Manager
         ];
     }
 
@@ -43,5 +47,6 @@ public static class AuthenticationConstants
         public const string CanManageEmployees = "CanManageEmployees";
         public const string CanManageCafeSettings = "CanManageCafeSettings";
         public const string CanViewAuditLog = "CanViewAuditLog";
+        public const string CanManageOrders = "CanManageOrders";
     }
 }

@@ -1,14 +1,15 @@
 # Architecture
 
-Version: 1.6 (Sprint 3.6 checkout and orders)
+Version: 1.7 (Sprint 3.7 staff order management)
 
 ## Goal
 
 Mood Pickup remains a single ASP.NET Core Web API backed directly by EF Core
 and PostgreSQL. Sprint 3.5 extends the public customer menu with an interactive
 frontend-owned local cart while consuming the existing projected public API.
-Sprint 3.6 adds focused order entities and checkout services to the same API;
-it does not add a server cart, abstraction layers, or staff order workflow.
+Sprint 3.6 adds focused order entities and checkout services to the same API.
+Sprint 3.7 extends those entities and services with the staff order workflow;
+it does not add a server cart or new abstraction layers.
 Real Telegram authentication remains inside the same API and adds only its
 focused authentication migration.
 
@@ -275,6 +276,29 @@ four-hour scheduling window, and 15-minute intervals by default. Replacing its
 configuration changes checkout validation without an API contract change. A
 staff configuration UI is intentionally outside this sprint.
 
+### Staff order workflow and real-time customer updates
+
+`StaffOrdersController` delegates operational rules to `IStaffOrderService` /
+`StaffOrderService`. The `CanManageOrders` policy admits only Administrator,
+Cashier, and Manager employees; customer tokens and MenuManager-only employees
+cannot reach these endpoints. The kitchen read controller retains the existing
+`CanWorkKitchen` policy and projects only `Confirmed` orders, providing backend
+support without implementing a kitchen board or kitchen SignalR events.
+
+Every staff mutation carries the current order GUID row version. Pre-detected
+stale requests and EF races return `409 ORDER_VERSION_CONFLICT`. Confirmation,
+rejection, and ready-time changes add an `EmployeeActionLog` to the same
+DbContext save as the order mutation, preserving correlation ID, employee,
+before values, and after values. Confirmation requires a ready time later than
+now, today in the configured cafe time zone, and inside configured working
+hours. Rejection is allowed only while pending and requires a reason.
+
+`SignalROrderRealtimeNotifier` publishes `OrderConfirmed`, `OrderRejected`, and
+`EstimatedReadyTimeChanged` only to `customer:{customerId}`. Payloads contain
+an event ID, timestamp, order identity/status, ready time, and rejection reason,
+never employee data. Customer pages update TanStack Query immediately, ignore
+duplicate event IDs, reconnect automatically, and poll as a fallback.
+
 ## File storage
 
 `IMediaStorage` isolates provider operations. `LocalMediaStorage` resolves a
@@ -315,6 +339,9 @@ immutable caching. Physical paths are never returned.
 - Sprint 3.6 adds order snapshot/validation unit coverage, PostgreSQL checkout
   ownership and rollback coverage, and React checkout/navigation/cart-clearing
   coverage.
+- Sprint 3.7 adds staff transition/audit/notification/concurrency unit tests,
+  PostgreSQL authorization and workflow tests, plus React staff-dialog,
+  navigation, customer-status, and SignalR cache-update coverage.
 - Docker smoke validation covers the complete composed stack.
 
 No EF Core InMemory tests are used to claim relational menu behavior.
@@ -335,7 +362,7 @@ boundaries, and asynchronous APIs accept cancellation tokens where relevant.
 
 ## Future evolution
 
-Later work can add staff order reception, kitchen flow, customer tracking,
-notifications, payment providers, discounts, delivery, cloud media storage,
+Later work can add kitchen preparation/ready/completion, persisted notification
+history, payment providers, discounts, delivery, cloud media storage,
 responsive image derivatives, and full-text search without replacing the
 current order API contract or local cart selection model.

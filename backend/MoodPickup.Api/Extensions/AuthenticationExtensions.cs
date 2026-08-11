@@ -105,6 +105,11 @@ public static class AuthenticationExtensions
             AddEmployeePolicy(options, AuthenticationConstants.Policies.CanManageEmployees);
             AddEmployeePolicy(options, AuthenticationConstants.Policies.CanManageCafeSettings);
             AddEmployeePolicy(options, AuthenticationConstants.Policies.CanViewAuditLog);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageOrders,
+                AuthenticationConstants.Roles.Cashier,
+                AuthenticationConstants.Roles.Manager);
         });
 
         services.AddScoped<AuthenticationHashing>();

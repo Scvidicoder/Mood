@@ -34,13 +34,25 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(order => order.DiscountTotal).HasPrecision(12, 2);
         builder.Property(order => order.Total).HasPrecision(12, 2);
         builder.Property(order => order.Currency).HasMaxLength(3).IsRequired();
+        builder.Property(order => order.RejectReason).HasMaxLength(500);
         builder.Property(order => order.RowVersion).IsConcurrencyToken();
         builder.HasIndex(order => order.OrderNumber).IsUnique();
         builder.HasIndex(order => new { order.CustomerId, order.CreatedAt });
+        builder.HasIndex(order => new { order.Status, order.CreatedAt });
         builder
             .HasOne(order => order.Customer)
             .WithMany(customer => customer.Orders)
             .HasForeignKey(order => order.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.ConfirmedByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.ConfirmedByEmployeeId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder
+            .HasOne(order => order.RejectedByEmployee)
+            .WithMany()
+            .HasForeignKey(order => order.RejectedByEmployeeId)
             .OnDelete(DeleteBehavior.Restrict);
         builder
             .HasMany(order => order.Items)

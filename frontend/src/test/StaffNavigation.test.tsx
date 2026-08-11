@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../app/AuthProvider";
 import { createQueryClient } from "../app/AppProviders";
+import { router } from "../app/router";
 import { StaffRoute } from "../components/StaffRoute";
 import { ToastProvider } from "../components/ToastProvider";
 import { StaffLayout } from "../layouts/StaffLayout";
@@ -62,7 +63,19 @@ describe("staff authorization and navigation", () => {
 
     expect(await screen.findByRole("link", { name: "Menu overview" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Audit log" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Orders" })).not.toBeInTheDocument();
     expect(screen.getByText("Mina Manager")).toBeVisible();
+  });
+
+  it("shows Orders to a Cashier without exposing menu administration", async () => {
+    mocks.refreshAccessToken.mockResolvedValue(
+      employeeToken(["Cashier"], "Cathy Cashier"),
+    );
+    renderLayout();
+
+    expect(await screen.findByRole("link", { name: "Orders" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Menu overview" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Audit log" })).not.toBeInTheDocument();
   });
 
   it("shows menu and audit navigation to an Administrator", async () => {
@@ -85,6 +98,18 @@ describe("staff authorization and navigation", () => {
     expect(
       await screen.findByRole("heading", { name: /not available to this account/i }),
     ).toBeVisible();
+  });
+
+  it("mounts order management inside the staff workspace", () => {
+    const staffRoot = router.routes.find((route) => route.path === "/staff");
+    const customerRoot = router.routes.find((route) => route.path === "/");
+
+    expect(staffRoot?.children?.map((route) => route.path)).toEqual(
+      expect.arrayContaining(["orders", "orders/:id"]),
+    );
+    expect(
+      customerRoot?.children?.filter((route) => route.path === "orders"),
+    ).toHaveLength(1);
   });
 });
 
@@ -116,7 +141,7 @@ function renderLayout() {
 function renderStaff(
   initialEntry: string,
   children: ReactNode,
-  capability: "employee" | "manageMenu" | "viewAuditLog",
+  capability: "employee" | "manageMenu" | "manageOrders" | "viewAuditLog",
 ) {
   return render(
     <QueryClientProvider client={createQueryClient()}>

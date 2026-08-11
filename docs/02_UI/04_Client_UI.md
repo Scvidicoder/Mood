@@ -491,7 +491,8 @@ The screen updates without refresh.
 
 ## 9.5 Cancellation
 
-The Cancel button is available only before Preparing.
+The Cancel button is available only while the order is Pending Confirmation.
+It disappears once the café confirms or rejects the order.
 
 Before cancellation, display confirmation.
 
@@ -666,7 +667,9 @@ Every customer screen must support:
 - Forbidden
 - Stale data warning
 
-SignalR disconnection must not block basic use. The interface should reconnect automatically and fall back to regular API refresh where needed.
+SignalR disconnection must not block basic use. The interface reconnects
+automatically and falls back to 15-second API refresh on Sprint 3.7 order
+tracking and My Orders pages. Duplicate event IDs are ignored.
 
 ---
 

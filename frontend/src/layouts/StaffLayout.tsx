@@ -16,6 +16,7 @@ export function StaffLayout() {
     onSuccess: () => navigate("/staff/login", { replace: true }),
   });
   const canManageMenu = hasStaffCapability(session, "manageMenu");
+  const canManageOrders = hasStaffCapability(session, "manageOrders");
   const canViewAudit = hasStaffCapability(session, "viewAuditLog");
 
   return (
@@ -29,6 +30,11 @@ export function StaffLayout() {
           <NavLink end onClick={() => setNavigationOpen(false)} to="/staff">
             Dashboard
           </NavLink>
+          {canManageOrders ? (
+            <NavLink onClick={() => setNavigationOpen(false)} to="/staff/orders">
+              Orders
+            </NavLink>
+          ) : null}
           {canManageMenu ? (
             <>
               <NavLink onClick={() => setNavigationOpen(false)} to="/staff/menu">

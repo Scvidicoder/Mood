@@ -4,7 +4,11 @@ export type PaymentMethod = "PayOnPickup" | "Online";
 
 export type PickupMode = "AsSoonAsPossible" | "Scheduled";
 
-export type OrderStatus = "PendingConfirmation" | "Cancelled";
+export type OrderStatus =
+  | "PendingConfirmation"
+  | "Confirmed"
+  | "Cancelled"
+  | "Rejected";
 
 export interface CreateOrderItemInput {
   productId: string;
@@ -57,6 +61,8 @@ export interface OrderDetail {
   total: number;
   currency: string;
   createdAt: string;
+  estimatedReadyAt?: string;
+  rejectReason?: string;
   items: OrderItem[];
 }
 
@@ -71,6 +77,62 @@ export interface OrderSummary {
   currency: string;
   itemQuantity: number;
   createdAt: string;
+  estimatedReadyAt?: string;
+  rejectReason?: string;
 }
 
 export type CustomerOrdersPage = PagedResponse<OrderSummary>;
+
+export interface StaffOrderSummary {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhoneNumber: string;
+  createdAt: string;
+  pickupMode: PickupMode;
+  requestedPickupTime?: string;
+  paymentMethod: PaymentMethod;
+  total: number;
+  currency: string;
+  comment?: string;
+  status: OrderStatus;
+  estimatedReadyAt?: string;
+  itemQuantity: number;
+  rowVersion: string;
+}
+
+export interface StaffOrderDetail extends StaffOrderSummary {
+  rejectReason?: string;
+  subtotal: number;
+  discountTotal: number;
+  confirmedAt?: string;
+  rejectedAt?: string;
+  items: OrderItem[];
+}
+
+export type StaffOrdersPage = PagedResponse<StaffOrderSummary>;
+
+export interface ConfirmOrderInput {
+  estimatedReadyTime: string;
+  rowVersion: string;
+}
+
+export interface RejectOrderInput {
+  reason: string;
+  rowVersion: string;
+}
+
+export interface UpdateEstimatedReadyTimeInput {
+  estimatedReadyTime: string;
+  rowVersion: string;
+}
+
+export interface OrderRealtimeEvent {
+  eventId: string;
+  timestamp: string;
+  entityId: string;
+  orderNumber: string;
+  status: OrderStatus;
+  estimatedReadyAt?: string;
+  rejectReason?: string;
+}

@@ -1,6 +1,13 @@
+using System.Buffers;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.SignalR.Protocol;
+using Microsoft.Extensions.DependencyInjection;
 using MoodPickup.Api.DTOs;
+using MoodPickup.Api.DTOs.Orders;
+using MoodPickup.Api.Entities;
 
 namespace MoodPickup.Api.Tests;
 
@@ -44,5 +51,39 @@ public sealed class FoundationEndpointsTests(MoodPickupApiFactory factory)
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("\"type\":\"not_found\"", payload, StringComparison.Ordinal);
         Assert.Contains("\"traceId\":", payload, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SignalRJsonProtocol_SerializesOrderStatusAsAName()
+    {
+        var protocol = factory.Services
+            .GetServices<IHubProtocol>()
+            .Single(candidate => candidate.Name == "json");
+        var output = new ArrayBufferWriter<byte>();
+        protocol.WriteMessage(
+            new InvocationMessage(
+                "OrderConfirmed",
+                [
+                    new OrderRealtimeEventDto(
+                        Guid.NewGuid(),
+                        factory.TimeProvider.GetUtcNow(),
+                        Guid.NewGuid(),
+                        "MP-20260811-00001",
+                        OrderStatus.Confirmed,
+                        factory.TimeProvider.GetUtcNow().AddMinutes(20),
+                        null)
+                ]),
+            output);
+
+        var payload = Encoding.UTF8.GetString(output.WrittenSpan)
+            .TrimEnd('\u001e');
+        using var document = JsonDocument.Parse(payload);
+
+        Assert.Equal(
+            "Confirmed",
+            document.RootElement
+                .GetProperty("arguments")[0]
+                .GetProperty("status")
+                .GetString());
     }
 }

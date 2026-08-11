@@ -36,3 +36,36 @@ public sealed class CreateOrderItemRequestValidator
 }
 
 public sealed class OrderListQueryValidator : PaginationValidator<OrderListQuery>;
+
+public sealed class StaffOrderListQueryValidator
+    : PaginationValidator<StaffOrderListQuery>;
+
+public sealed class ConfirmOrderRequestValidator
+    : AbstractValidator<ConfirmOrderRequest>
+{
+    public ConfirmOrderRequestValidator()
+    {
+        RuleFor(request => request.EstimatedReadyTime).NotEmpty();
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}
+
+public sealed class RejectOrderRequestValidator
+    : AbstractValidator<RejectOrderRequest>
+{
+    public RejectOrderRequestValidator()
+    {
+        RuleFor(request => request.Reason).NotEmpty().MaximumLength(500);
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}
+
+public sealed class UpdateEstimatedReadyTimeRequestValidator
+    : AbstractValidator<UpdateEstimatedReadyTimeRequest>
+{
+    public UpdateEstimatedReadyTimeRequestValidator()
+    {
+        RuleFor(request => request.EstimatedReadyTime).NotEmpty();
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}

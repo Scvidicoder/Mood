@@ -27,7 +27,9 @@ public sealed record OrderSummaryDto(
     decimal Total,
     string Currency,
     int ItemQuantity,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? EstimatedReadyAt,
+    string? RejectReason);
 
 public sealed record OrderDetailDto(
     Guid Id,
@@ -42,7 +44,18 @@ public sealed record OrderDetailDto(
     decimal Total,
     string Currency,
     DateTimeOffset CreatedAt,
+    DateTimeOffset? EstimatedReadyAt,
+    string? RejectReason,
     IReadOnlyList<OrderItemDto> Items);
+
+public sealed record OrderRealtimeEventDto(
+    Guid EventId,
+    DateTimeOffset Timestamp,
+    Guid EntityId,
+    string OrderNumber,
+    OrderStatus Status,
+    DateTimeOffset? EstimatedReadyAt,
+    string? RejectReason);
 
 public sealed record OrderItemDto(
     Guid ProductId,

@@ -32,6 +32,22 @@ public sealed class Order : IHasCreatedAt, IHasConcurrencyToken
 
     public string Currency { get; set; } = string.Empty;
 
+    public DateTimeOffset? EstimatedReadyAt { get; set; }
+
+    public Guid? ConfirmedByEmployeeId { get; set; }
+
+    public Employee? ConfirmedByEmployee { get; set; }
+
+    public DateTimeOffset? ConfirmedAt { get; set; }
+
+    public Guid? RejectedByEmployeeId { get; set; }
+
+    public Employee? RejectedByEmployee { get; set; }
+
+    public DateTimeOffset? RejectedAt { get; set; }
+
+    public string? RejectReason { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public Guid RowVersion { get; set; }

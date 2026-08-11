@@ -20,4 +20,9 @@ public sealed class TestTimeProvider : TimeProvider
     {
         _utcNow = DateTimeOffset.UtcNow;
     }
+
+    public void SetUtcNow(DateTimeOffset value)
+    {
+        _utcNow = value.ToUniversalTime();
+    }
 }

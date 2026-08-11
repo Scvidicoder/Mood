@@ -3247,3 +3247,262 @@ textarea {
     animation-iteration-count: 1 !important;
   }
 }
+
+.button-danger {
+  color: #fff;
+  background: #a13d32;
+}
+
+.button-danger:hover {
+  background: #842e27;
+}
+
+.orders-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: none;
+}
+
+.customer-order-grid,
+.staff-order-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.customer-order-card,
+.staff-order-card {
+  padding: clamp(1rem, 3vw, 1.4rem);
+  border: 1px solid #d5ddd8;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 0.3rem 1.2rem rgb(39 54 48 / 6%);
+}
+
+.order-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.order-card-heading h2 {
+  margin: 0;
+  color: #173f34;
+  font-size: 1.3rem;
+}
+
+.order-status {
+  flex: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  color: #674d14;
+  background: #fff2cf;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.order-status--confirmed {
+  color: #12593f;
+  background: #def3e9;
+}
+
+.order-status--rejected,
+.order-status--cancelled {
+  color: #8b2c2c;
+  background: #fbe2e2;
+}
+
+.compact-order-details,
+.staff-order-fields {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1rem;
+}
+
+.compact-order-details > div,
+.staff-order-fields > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #edf0ed;
+}
+
+.compact-order-details dt,
+.staff-order-fields dt {
+  color: #66706d;
+}
+
+.compact-order-details dd,
+.staff-order-fields dd {
+  margin: 0;
+  color: #173f34;
+  font-weight: 750;
+  text-align: right;
+}
+
+.order-reject-reason,
+.staff-order-comment {
+  padding: 0.8rem;
+  border-radius: 0.6rem;
+  line-height: 1.5;
+}
+
+.order-reject-reason {
+  color: #7e3028 !important;
+  background: #fff0ed;
+}
+
+.staff-order-comment {
+  color: #4d5c56;
+  background: #f5f6f2;
+}
+
+.staff-order-filter {
+  display: grid;
+  gap: 0.35rem;
+  color: #35403c;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.staff-order-filter select,
+.staff-order-dialog input,
+.staff-order-dialog textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #b8c9c1;
+  border-radius: 0.5rem;
+  color: #173f34;
+  background: #fff;
+}
+
+.staff-order-actions,
+.order-success-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.order-success-actions {
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.order-success-actions .button,
+.order-success-card .order-success-actions .button {
+  margin-top: 0;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(14 31 25 / 62%);
+}
+
+.staff-order-dialog {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 31rem);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 24%);
+}
+
+.staff-order-dialog h2 {
+  margin: 0;
+}
+
+.staff-order-dialog label {
+  display: grid;
+  gap: 0.45rem;
+  color: #35403c;
+  font-weight: 750;
+}
+
+.staff-order-dialog textarea {
+  resize: vertical;
+}
+
+.staff-back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #176448;
+  font-weight: 750;
+}
+
+.staff-order-detail-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.staff-order-items {
+  display: grid;
+  gap: 1rem;
+}
+
+.staff-order-items > section {
+  padding: 1rem;
+  border: 1px solid #e1e5e2;
+  border-radius: 0.7rem;
+  background: #fafbf9;
+}
+
+.staff-order-items > section > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.staff-order-items h3 {
+  margin: 0;
+}
+
+.staff-order-items p,
+.staff-order-items ul {
+  margin-bottom: 0;
+  color: #5b6461;
+}
+
+@media (min-width: 48rem) {
+  .customer-order-grid,
+  .staff-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-order-detail-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(15rem, 0.7fr);
+  }
+}
+
+@media (min-width: 76rem) {
+  .staff-order-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 39.99rem) {
+  .customer-order-card .button,
+  .staff-order-actions .button,
+  .order-success-actions .button {
+    width: 100%;
+  }
+
+  .order-card-heading {
+    align-items: flex-start;
+  }
+
+  .order-status {
+    max-width: 9rem;
+    text-align: center;
+  }
+}

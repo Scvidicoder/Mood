@@ -43,9 +43,9 @@ Customer receives access and JWT tokens.
 
 ## UF-003 Place Order
 
-Sprint 3.5 implements steps 1-4 as an anonymous device-local draft. Steps 5-9
-require Sprint 3.6 backend checkout/order creation and are not currently
-callable.
+Sprint 3.5 implements steps 1-4 as an anonymous device-local draft and Sprint
+3.6 implements checkout/order creation. Sprint 3.7 adds the staff decision and
+customer tracking that follow step 9.
 
 1. Browse menu.
 2. Configure products.
@@ -71,7 +71,7 @@ Customer
 → Pending Confirmation
 
 Reception
-→ Confirm
+→ Confirm and set estimated ready time
 
 Kitchen
 → Preparing
@@ -87,7 +87,7 @@ Pickup
 ## UF-005 Customer Cancellation
 
 Precondition:
-Order status is not Preparing.
+Order status is PendingConfirmation.
 
 Flow:
 1. Customer presses Cancel.

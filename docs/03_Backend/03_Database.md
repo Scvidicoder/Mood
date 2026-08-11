@@ -1,6 +1,6 @@
 # Database Design
 
-Version: 1.5 (Sprint 3.6 checkout and orders)
+Version: 1.6 (Sprint 3.7 staff order management)
 
 ## Overview
 
@@ -11,7 +11,8 @@ implemented. `RealTelegramAuthentication` extends login challenges and adds
 durable Telegram update idempotency. Sprint 3.3 adds filesystem media behavior
 without changing the database schema: PostgreSQL continues to store metadata
 only. Sprint 3.5 adds an anonymous browser-local cart. Sprint 3.6 adds the
-first persistent customer orders.
+first persistent customer orders. Sprint 3.7 adds staff confirmation,
+rejection, estimated-ready-time, and employee attribution fields.
 
 The database is designed for one cafe. Order items and options store immutable
 menu snapshots, so historical prices and names do not depend on later menu
@@ -291,7 +292,7 @@ preserves history.
 - `Id` (`uuid`, primary key)
 - `CustomerId` (required foreign key)
 - `OrderNumber` (required, unique, maximum 32; e.g. `MP-20260807-00015`)
-- `Status` (`PendingConfirmation` or `Cancelled`)
+- `Status` (`PendingConfirmation`, `Confirmed`, `Cancelled`, or `Rejected`)
 - `PaymentMethod` (`PayOnPickup` or `Online`)
 - `PickupMode` (`AsSoonAsPossible` or `Scheduled`)
 - `RequestedPickupTime` (null for ASAP; required for Scheduled)
@@ -299,13 +300,17 @@ preserves history.
 - `Comment` (nullable, maximum 500)
 - `Subtotal`, `DiscountTotal`, `Total` (`numeric(12,2)`)
 - `Currency` (required, three characters)
+- `EstimatedReadyAt` (nullable; required by the confirmation service)
+- `ConfirmedByEmployeeId`, `ConfirmedAt` (nullable confirmation attribution)
+- `RejectedByEmployeeId`, `RejectedAt` (nullable rejection attribution)
+- `RejectReason` (nullable, maximum 500; required for rejection)
 - `CreatedAt`
 - `RowVersion` (`uuid`)
 
 `DiscountTotal` is currently zero. Database checks require non-negative totals,
 `Total = Subtotal - DiscountTotal`, and a pickup time only for scheduled
-orders. There is no payment transaction, order confirmation, or staff workflow
-in this sprint.
+orders. Staff services enforce legal status transitions, ready-time business
+hours, and mandatory rejection reasons before the atomic order/audit save.
 
 ### `OrderItems`
 
@@ -356,6 +361,7 @@ GUID remains the primary key.
 | ProductOptionGroup to ProductOptionValue | one-to-many | `Restrict` |
 | OptionValue to ProductOptionValue | one-to-many | `Restrict` |
 | Employee to EmployeeActionLog | one-to-many | `Restrict` |
+| Employee to confirmed/rejected Order attribution | one-to-many | `Restrict` |
 | Customer to Order | one-to-many | `Restrict` |
 | Order to OrderItem | one-to-many | `Cascade` |
 | OrderItem to OrderItemOption | one-to-many | `Cascade` |
@@ -392,6 +398,7 @@ option-group assignments, and option-value assignments.
 
 - unique `Orders(OrderNumber)`
 - `Orders(CustomerId, CreatedAt)` for newest-first customer history
+- `Orders(Status, CreatedAt)` for operational staff boards
 - `OrderItems(OrderId)`
 - `OrderItemOptions(OrderItemId, DisplayOrder)`
 
@@ -489,3 +496,4 @@ run in Testing or Production.
 - `20260806081107_Sprint3MenuApiAudit`
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
+- `20260811061908_Sprint37StaffOrderManagement`

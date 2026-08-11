@@ -1,7 +1,7 @@
 
 # Notifications and SignalR
 
-Version: 1.0
+Version: 1.1 (Sprint 3.7 customer order events)
 
 ## Purpose
 
@@ -123,3 +123,12 @@ Estimated time updates always include both previous and new values.
 Clients receive only events for authorized groups.
 
 SignalR payloads never contain confidential data unrelated to the recipient.
+
+## Sprint 3.7 implementation boundary
+
+Sprint 3.7 publishes `OrderConfirmed`, `OrderRejected`, and
+`EstimatedReadyTimeChanged` to the authenticated `customer:{customerId}` group.
+Payloads contain `EventId`, `Timestamp`, `EntityId`, order number/status,
+estimated ready time, and optional rejection reason. They contain no employee
+identity. Kitchen SignalR delivery, persisted notifications, Telegram order
+messages, browser notifications, and later order statuses remain future work.

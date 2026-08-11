@@ -56,15 +56,17 @@ Completed → ReadyForPickup
 Rollback requires a reason and is written to the audit log.
 
 ## BR-008 – Customer cancellation
-Customers may cancel an order only before it reaches Preparing.
+Sprint 3.7 customers may cancel an order only while it is
+`PendingConfirmation`. Once confirmed, customer cancellation is forbidden.
 
 ## BR-009 – Cafe rejection
-The café may reject an order while it is PendingConfirmation or Confirmed.
-A rejection reason is mandatory.
+The café may reject an order only while it is `PendingConfirmation`.
+Rejecting a confirmed order is forbidden. A rejection reason is mandatory.
 
 ## BR-010 – Estimated ready time
-Estimated ready time may be assigned or changed by employees with the Kitchen,
-Order Reception or Administrator role.
+In Sprint 3.7, estimated ready time is assigned or changed by Administrator,
+Cashier, or Manager order staff. Confirmation requires the time to be later
+than now, today in the café time zone, and inside working hours.
 
 ---
 
@@ -80,7 +82,7 @@ Supported payment methods:
 Online payment is completed immediately after checkout.
 
 ## BR-013 – Automatic refund
-If an online order is cancelled by the customer (before Preparing) or rejected by the café,
+If an online order is cancelled by the customer while pending confirmation or rejected by the café,
 a full refund is initiated automatically.
 
 ## BR-014 – Pickup payment

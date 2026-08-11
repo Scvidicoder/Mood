@@ -82,7 +82,13 @@ builder.Services.AddMoodPickupAuthentication(
     builder.Configuration,
     builder.Environment);
 builder.Services.AddMenuDomain(builder.Configuration);
-builder.Services.AddSignalR();
+builder.Services
+    .AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
+    });
 builder.Services.AddMemoryCache();
 builder.Services.AddRateLimiter(options =>
 {

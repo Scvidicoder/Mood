@@ -33,6 +33,8 @@ public static class MenuExtensions
         services.AddScoped<IAdminProductConfigurationService, AdminProductConfigurationService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IStaffOrderService, StaffOrderService>();
+        services.AddSingleton<IOrderRealtimeNotifier, SignalROrderRealtimeNotifier>();
         return services;
     }
 

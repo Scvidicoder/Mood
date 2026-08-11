@@ -1,6 +1,6 @@
 # Local Development
 
-Version: 2.4 (Sprint 3.6 checkout and orders)
+Version: 2.5 (Sprint 3.7 staff order management)
 
 ## Prerequisites
 
@@ -47,8 +47,8 @@ Checkout__PickupIntervalMinutes=15
 
 The scheduling window and interval are intentionally fixed by the current API
 contract. A deployment/configuration update to business hours is observed by
-checkout validation without changing its HTTP contract; no staff settings UI
-exists in Sprint 3.6.
+checkout and staff estimated-ready-time validation without changing their HTTP
+contracts; no staff settings UI exists in Sprint 3.7.
 
 Real Telegram mode additionally requires:
 
@@ -204,6 +204,7 @@ Current migrations:
 - `20260806081107_Sprint3MenuApiAudit`
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
+- `20260811061908_Sprint37StaffOrderManagement`
 
 Production migrations are an explicit release step.
 
@@ -224,8 +225,8 @@ intentionally does nothing.
 
 ### PostgreSQL API integration tests
 
-Critical Sprint 3.2-3.4 menu and media API tests use a disposable real
-PostgreSQL database and an isolated temporary media directory.
+Critical menu, media, checkout, and Sprint 3.7 staff-order API tests use a
+disposable real PostgreSQL database and an isolated temporary media directory.
 Start one example instance:
 
 ```powershell
@@ -254,8 +255,10 @@ run. Do not point this variable at a database containing data to preserve.
 | Local cart | <http://localhost:5173/cart> |
 | Checkout (customer) | <http://localhost:5173/checkout> |
 | Order success (customer) | `http://localhost:5173/order-success/{id}` |
+| My orders (customer) | <http://localhost:5173/orders> |
 | Customer login | <http://localhost:5173/login> |
 | Staff login | <http://localhost:5173/staff/login> |
+| Staff orders (Administrator, Cashier, Manager) | <http://localhost:5173/staff/orders> |
 | Staff menu | <http://localhost:5173/staff/menu> |
 | Categories | <http://localhost:5173/staff/menu/categories> |
 | Products | <http://localhost:5173/staff/menu/products> |
@@ -401,6 +404,31 @@ tokens remain cookie-only and are unrelated to menu concurrency.
    snapshots.
 8. Inspect PostgreSQL: `Orders`, `OrderItems`, and `OrderItemOptions` contain
    the created data; `OrderDailySequences` increments once for the café date.
+
+### Manual Sprint 3.7 verification
+
+1. Create two pending customer orders and sign in as an Administrator, Cashier,
+   or Manager. Open `/staff/orders`; verify pending orders are newest first and
+   show contact, pickup, payment, total, comment, status, and ready-time data.
+2. Sign in as MenuManager-only and confirm `/staff/orders` is hidden and the API
+   returns `403`. Confirm a customer token also receives `403`.
+3. Confirm one order with a future time today inside configured working hours.
+   Verify past, tomorrow, and outside-hours values return validation
+   ProblemDetails. Verify a repeated/stale request returns `409`.
+4. Keep the customer tracking page open. Confirm it changes to Confirmed and
+   displays the estimated ready time without reload. Change the time from the
+   Confirmed filter and verify the customer updates again.
+5. Reject the other pending order with a reason. Verify the customer My Orders
+   and detail pages show Rejected and the reason. Verify a confirmed order
+   cannot be rejected and cannot be customer-cancelled.
+6. Connect as Kitchen and call `GET /api/v1/staff/kitchen/orders`; only confirmed
+   orders must appear. Do not expect a kitchen UI or kitchen SignalR event.
+7. Inspect `EmployeeActionLogs`: confirmation, rejection, and time changes have
+   employee identity, correlation ID, and before/after JSON. Customer responses
+   and SignalR payloads must contain no employee identity.
+8. Apply `Sprint37StaffOrderManagement` over a Sprint 3.6 database and from a
+   clean database. `dotnet ef migrations has-pending-model-changes` must report
+   no pending changes in both cases.
 
 ## Troubleshooting
 

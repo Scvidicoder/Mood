@@ -12,6 +12,7 @@ import { HomePage } from "../pages/HomePage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage";
 import { OrderSuccessPage } from "../pages/OrderSuccessPage";
+import { MyOrdersPage } from "../pages/MyOrdersPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { StaffLoginPage } from "../pages/StaffLoginPage";
 import { TelegramLinkPage } from "../pages/TelegramLinkPage";
@@ -26,6 +27,8 @@ import { ProductFormPage } from "../pages/staff/menu/ProductFormPage";
 import { ProductsPage } from "../pages/staff/menu/ProductsPage";
 import { StaffDashboardPage } from "../pages/staff/StaffDashboardPage";
 import { StaffProfilePage } from "../pages/staff/StaffProfilePage";
+import { StaffOrderDetailsPage } from "../pages/staff/orders/StaffOrderDetailsPage";
+import { StaffOrdersPage } from "../pages/staff/orders/StaffOrdersPage";
 import { VerifyCodePage } from "../pages/VerifyCodePage";
 
 export const router = createBrowserRouter([
@@ -58,6 +61,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute accountType="customer">
             <OrderSuccessPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "orders",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <MyOrdersPage />
           </ProtectedRoute>
         ),
       },
@@ -114,6 +125,22 @@ export const router = createBrowserRouter([
       {
         path: "profile",
         element: <StaffProfilePage />,
+      },
+      {
+        path: "orders",
+        element: (
+          <StaffRoute capability="manageOrders">
+            <StaffOrdersPage />
+          </StaffRoute>
+        ),
+      },
+      {
+        path: "orders/:id",
+        element: (
+          <StaffRoute capability="manageOrders">
+            <StaffOrderDetailsPage />
+          </StaffRoute>
+        ),
       },
       {
         path: "menu",

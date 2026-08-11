@@ -1,7 +1,7 @@
 
 # REST API Specification
 
-Version: 1.5 (Sprint 3.6)
+Version: 1.6 (Sprint 3.7)
 
 Version 1 base URL:
 
@@ -15,12 +15,13 @@ Content type:
 application/json
 ```
 
-Implemented through Sprint 3.6: authentication and session endpoints, system
+Implemented through Sprint 3.7: authentication and session endpoints, system
 and health endpoints, the public menu, interactive customer configuration and
 local cart UI, authenticated customer checkout/orders, authorized menu
-administration, employee menu audit reads, secure image upload, and
-metadata-mediated public media delivery. Later staff, kitchen, payment,
-notification, and tracking endpoints remain explicitly planned only.
+administration, employee menu/order audit reads, secure image upload,
+metadata-mediated public media delivery, staff order confirmation/rejection,
+confirmed-order kitchen reads, and customer SignalR order updates. Kitchen
+state mutations, payment, and persisted notification endpoints remain planned.
 
 Authentication:
 
@@ -765,7 +766,9 @@ Query parameters:
       "total": 48.00,
       "currency": "TJS",
       "itemQuantity": 2,
-      "createdAt": "2026-08-07T10:05:00Z"
+      "createdAt": "2026-08-07T10:05:00Z",
+      "estimatedReadyAt": "2026-08-07T10:40:00Z",
+      "rejectReason": null
     }
   ],
   "page": 1,
@@ -781,28 +784,39 @@ Returns the complete immutable order snapshot. Its response shape is the same
 as `POST /orders`. It returns `404 ORDER_NOT_FOUND` when the order does not
 exist or is not owned by the caller.
 
-Only `PendingConfirmation` and `Cancelled` statuses exist in Sprint 3.6.
-There are no cancellation, repeat, staff, kitchen, payment, notification, or
-tracking endpoints yet.
+The detail and list contracts return `PendingConfirmation`, `Confirmed`,
+`Cancelled`, or `Rejected`, plus nullable `estimatedReadyAt` and
+`rejectReason`. They never expose confirming/rejecting employee identity.
+
+## POST `/orders/{id}/cancel`
+
+Cancels an order owned by the authenticated customer only while its status is
+`PendingConfirmation`. A confirmed, rejected, cancelled, missing, or
+other-customer order cannot be cancelled. Transition conflicts return `409`;
+another customer's ID remains `404`.
 
 ---
 
-# 10. Reception API
+# 10. Staff Order Management
 
-Planned, not implemented in Sprint 3.2.
+Implemented in Sprint 3.7. All endpoints under `/staff/orders` require the
+`CanManageOrders` policy: Administrator, Cashier, or Manager. Customer tokens
+and MenuManager-only employee tokens receive `403`.
 
-Required role:
+## GET `/staff/orders`
 
-- `OrderReception`
-- or `Administrator`
+Returns newest-first staff order summaries. The staff dashboard sends
+`status=PendingConfirmation`; omit `status` to request all statuses. `page` defaults to 1
+and `pageSize` to 20 (maximum 100). Each row returns order number, customer name
+and phone, creation/requested pickup times, pickup/payment methods, totals,
+comment, current status, estimated ready time, item quantity, and `rowVersion`.
 
-## GET `/staff/reception/orders`
+## GET `/staff/orders/{id}`
 
-Query parameters:
-
-- `status`
-- `page`
-- `pageSize`
+Returns the complete order, immutable item and selected-option snapshots,
+customer contact/comment, totals, payment/pickup data, staff decision
+timestamps, rejection reason, and current `rowVersion`. Employee IDs are not
+part of this API response.
 
 ---
 
@@ -812,13 +826,19 @@ Query parameters:
 
 ```json
 {
-  "estimatedReadyTime": null
+  "estimatedReadyTime": "2026-08-11T11:30:00+05:00",
+  "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
 ### Response
 
-Returns the updated order.
+Requires a pending order. The estimated ready time is mandatory, later than the
+current time, today in the configured cafe time zone, and within configured
+working hours. The transition stores `ConfirmedAt`, confirming employee, and
+`EstimatedReadyAt`, writes the audit entry atomically, and publishes
+`OrderConfirmed` to the owning customer. Repeated, terminal, or stale requests
+return `409`.
 
 ---
 
@@ -828,19 +848,31 @@ Returns the updated order.
 
 ```json
 {
-  "reason": "Kitchen is temporarily unavailable."
+  "reason": "Kitchen is temporarily unavailable.",
+  "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
+
+The reason is required and limited to 500 characters. Only
+`PendingConfirmation` may be rejected; confirmed rejection is forbidden. The
+transition stores rejection employee/time/reason, writes the audit entry
+atomically, and publishes `OrderRejected` to the customer.
 
 ---
 
 ## PUT `/staff/orders/{id}/estimated-ready-time`
 
-Required role:
+Uses the same `estimatedReadyTime` and `rowVersion` shape as confirmation. It
+applies only to a confirmed order and uses the same time validation. A real
+change writes `EstimatedReadyTimeChanged` audit data with before/after values
+and publishes the matching customer SignalR event.
 
-- `OrderReception`
-- `Kitchen`
-- `Administrator`
+## GET `/staff/kitchen/orders`
+
+Requires `CanWorkKitchen` (`Kitchen` or Administrator). Returns newest-first
+confirmed orders only, using the staff summary shape. This endpoint is backend
+support for Sprint 3.8; Sprint 3.7 deliberately provides no kitchen UI, kitchen
+status mutation, or kitchen SignalR update.
 
 ### Request
 
@@ -938,32 +970,9 @@ Fails when pay-on-pickup payment has not been recorded.
 
 # 13. Staff Order Search
 
-Planned, not implemented in Sprint 3.2.
-
-## GET `/staff/orders`
-
-Query parameters:
-
-- `status`
-- `paymentMethod`
-- `paymentStatus`
-- `customerName`
-- `customerPhone`
-- `orderNumber`
-- `dateFrom`
-- `dateTo`
-- `page`
-- `pageSize`
-
-Required role:
-
-Any employee role with order access.
-
----
-
-## GET `/staff/orders/{id}`
-
-Returns complete order details, customer contact data and action history.
+Advanced historical filters (payment state, name/phone/order-number search, and
+date ranges) remain future work. Sprint 3.7 implements paginated status
+filtering on `GET /staff/orders` as documented in section 10.
 
 ---
 
@@ -1486,6 +1495,7 @@ Main events:
 
 - `OrderCreated`
 - `OrderConfirmed`
+- `OrderRejected`
 - `OrderStatusChanged`
 - `EstimatedReadyTimeChanged`
 - `OrderReady`
@@ -1525,9 +1535,12 @@ Conflict response:
 }
 ```
 
-Sprint 3.2 menu row versions are GUID strings. Every successful update returns
+Sprint 3.2 menu and Sprint 3.7 order row versions are GUID strings. Every successful update returns
 a new value. Pre-detected stale writes include `currentResource`; a race caught
 by EF still returns `409 MENU_VERSION_CONFLICT` without exposing internals.
+
+Order conflicts return `409 ORDER_VERSION_CONFLICT`; pre-detected stale order
+requests include the current order ID and row version in `currentResource`.
 
 Menu error codes include:
 

@@ -18,6 +18,8 @@ An employee may have multiple roles:
 - Kitchen
 - Pickup
 - Menu Manager
+- Cashier
+- Manager
 
 The navigation and available actions depend on assigned roles.
 
@@ -169,7 +171,8 @@ Reject requires a reason.
 
 ### 7.5 Confirmation
 
-An employee may confirm an order without immediately setting estimated ready time.
+Sprint 3.7 requires an estimated ready time in the confirmation dialog. The
+backend validates that it is later than now, today, and inside working hours.
 
 After confirmation:
 
@@ -177,6 +180,12 @@ After confirmation:
 - Kitchen employees receive a notification
 - The order appears on the kitchen board
 - The card disappears from the new-order list for all other employees
+
+The Sprint 3.7 `/staff/orders` dashboard is available to Administrator,
+Cashier, and Manager. MenuManager alone cannot view or mutate orders. It uses
+responsive cards, status filtering, 10-second refresh fallback, order details,
+and GUID row-version conflict handling. Kitchen, Preparing, Ready, and
+Completed UI remain Sprint 3.8 work.
 
 ### 7.6 Sorting
 

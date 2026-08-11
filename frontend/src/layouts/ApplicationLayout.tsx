@@ -39,7 +39,10 @@ export function ApplicationLayout() {
               <strong aria-hidden="true">{cartQuantity}</strong>
             </NavLink>
             {session?.accountType === "customer" ? (
-              <NavLink to="/profile">Profile</NavLink>
+              <>
+                <NavLink to="/orders">My orders</NavLink>
+                <NavLink to="/profile">Profile</NavLink>
+              </>
             ) : (
               <NavLink to="/login">Sign in</NavLink>
             )}
@@ -66,6 +69,9 @@ export function ApplicationLayout() {
           <nav aria-label="Footer navigation">
             <Link to="/">Menu</Link>
             <Link to="/cart">Cart</Link>
+            {session?.accountType === "customer" ? (
+              <Link to="/orders">My orders</Link>
+            ) : null}
             <Link to="/login">Customer sign in</Link>
             <Link to="/health">System health</Link>
           </nav>

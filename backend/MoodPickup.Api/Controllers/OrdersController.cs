@@ -54,4 +54,17 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     {
         return Ok(await orderService.GetMineAsync(query, cancellationToken));
     }
+
+    /// <summary>Cancels an owned order that is still awaiting staff confirmation.</summary>
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType<OrderDetailDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<OrderDetailDto>> Cancel(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await orderService.CancelAsync(id, cancellationToken));
+    }
 }

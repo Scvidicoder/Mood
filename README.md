@@ -1,8 +1,8 @@
 # Mood Pickup
 
 Mood Pickup is a pickup-ordering platform for Mood Dushanbe. The current
-foundation includes the Sprint 3.6 checkout/order flow and real Telegram
-customer authentication:
+foundation includes the Sprint 3.7 staff order-management flow and real
+Telegram customer authentication:
 
 - ASP.NET Core 8 Web API with PostgreSQL and EF Core;
 - customer phone authentication with Telegram deep-link contact verification,
@@ -41,13 +41,22 @@ customer authentication:
   daily human-readable order numbers;
 - customer order creation, owned-order retrieval, and newest-first paginated
   order summaries;
+- employee order dashboards for Administrator, Cashier, and Manager roles with
+  pending-order confirmation, required ready-time assignment, rejection, and
+  optimistic concurrency;
+- customer My Orders and live order tracking for confirmation, rejection, and
+  estimated-ready-time changes through authenticated SignalR groups;
+- transactional employee order audit entries and a confirmed-order backend
+  projection for the future kitchen board;
 - backend authentication/domain/order tests, real-PostgreSQL menu/media/order
   API tests, and network-boundary frontend Vitest coverage;
 - Docker Compose local orchestration with persistent PostgreSQL and media
   volumes.
 
-Backend cart storage, payment gateways, operational boards, staff workflows,
-customer tracking, and order notifications remain outside the current scope.
+Backend cart storage, payment gateways, kitchen preparation/ready/completion
+workflows, and persisted multi-channel notifications remain outside the current
+scope. Sprint 3.7 implements only staff reception decisions and customer
+SignalR updates; the kitchen UI begins in Sprint 3.8.
 The cart is an anonymous device-local draft and contains no trusted commercial
 truth; checkout recalculates it from the database before persisting an order.
 
@@ -165,10 +174,12 @@ the in-memory cart usable and show a non-blocking warning.
 | Local cart | <http://localhost:5173/cart> |
 | Checkout (customer) | <http://localhost:5173/checkout> |
 | Order success (customer) | `http://localhost:5173/order-success/{id}` |
+| My orders (customer) | <http://localhost:5173/orders> |
 | Customer login | <http://localhost:5173/login> |
 | Customer profile | <http://localhost:5173/profile> |
 | Staff login | <http://localhost:5173/staff/login> |
 | Staff dashboard | <http://localhost:5173/staff> |
+| Staff orders (Administrator, Cashier, Manager) | <http://localhost:5173/staff/orders> |
 | Menu administration | <http://localhost:5173/staff/menu> |
 | Categories | <http://localhost:5173/staff/menu/categories> |
 | Products | <http://localhost:5173/staff/menu/products> |
@@ -193,6 +204,7 @@ the in-memory cart usable and show a non-blocking warning.
 - `20260806081107_Sprint3MenuApiAudit`
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
+- `20260811061908_Sprint37StaffOrderManagement`
 
 ```powershell
 dotnet ef migrations list --project backend/MoodPickup.Api --startup-project backend/MoodPickup.Api -- --environment Development

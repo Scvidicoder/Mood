@@ -5,6 +5,7 @@ import { hasStaffCapability } from "../../auth/permissions";
 export function StaffDashboardPage() {
   const { session } = useAuth();
   const canManageMenu = hasStaffCapability(session, "manageMenu");
+  const canManageOrders = hasStaffCapability(session, "manageOrders");
 
   return (
     <section>
@@ -13,8 +14,8 @@ export function StaffDashboardPage() {
           <p className="eyebrow">Staff dashboard</p>
           <h1>Welcome, {session?.fullName || session?.username}</h1>
           <p>
-            Use the sections available for your assigned roles. Operational order
-            boards are scheduled for a later sprint.
+            Use the sections available for your assigned roles. Order staff can
+            review and respond to orders from this workspace.
           </p>
         </div>
       </div>
@@ -28,6 +29,13 @@ export function StaffDashboardPage() {
         </div>
       ) : null}
       <div className="summary-grid">
+        {canManageOrders ? (
+          <Link className="summary-card summary-card--link" to="/staff/orders">
+            <span>Pending orders</span>
+            <strong>Open dashboard</strong>
+            <small>Confirm, reject, and manage estimated ready times</small>
+          </Link>
+        ) : null}
         {canManageMenu ? (
           <Link className="summary-card summary-card--link" to="/staff/menu">
             <span>Menu administration</span>
