@@ -2804,6 +2804,227 @@ textarea {
   margin-bottom: 1.25rem;
 }
 
+.checkout-page,
+.order-success-page {
+  padding: 2rem 0 4rem;
+}
+
+.checkout-page__inner {
+  width: min(100% - 2rem, 78rem);
+  margin-inline: auto;
+}
+
+.checkout-heading {
+  max-width: 46rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.checkout-heading h1,
+.order-success-card h1 {
+  margin: 0;
+  color: #173f34;
+}
+
+.checkout-heading p:last-child {
+  max-width: 43rem;
+  color: #536b60;
+}
+
+.checkout-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.checkout-form,
+.checkout-summary,
+.order-success-card {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid #d5e1db;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 0.9rem 2.5rem rgb(23 63 52 / 8%);
+}
+
+.checkout-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.checkout-form fieldset {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #d5e1db;
+  border-radius: 0.75rem;
+}
+
+.checkout-form legend {
+  padding-inline: 0.35rem;
+  color: #173f34;
+  font-weight: 800;
+}
+
+.checkout-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+  cursor: pointer;
+}
+
+.checkout-choice input {
+  margin-top: 0.25rem;
+}
+
+.checkout-choice span,
+.checkout-field {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.checkout-choice small,
+.checkout-field small,
+.checkout-field span {
+  color: #536b60;
+}
+
+.checkout-field {
+  color: #173f34;
+  font-weight: 750;
+}
+
+.checkout-field input,
+.checkout-field textarea {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #b8cfc4;
+  border-radius: 0.5rem;
+  color: #173f34;
+  font: inherit;
+  font-weight: 400;
+}
+
+.checkout-field textarea {
+  resize: vertical;
+}
+
+.checkout-field__error,
+.checkout-warning {
+  color: #9d3428 !important;
+  font-size: 0.88rem;
+}
+
+.checkout-warning,
+.checkout-error {
+  padding: 0.8rem 1rem;
+  border-radius: 0.6rem;
+  background: #fff1ed;
+}
+
+.checkout-warning {
+  margin: 0;
+}
+
+.checkout-error .error-state {
+  margin: 0;
+}
+
+.checkout-error ul {
+  margin: 0.65rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.checkout-submit {
+  justify-self: start;
+}
+
+.checkout-summary {
+  align-self: start;
+}
+
+.checkout-summary h2 {
+  margin-top: 0;
+}
+
+.checkout-summary ul {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-summary li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.checkout-summary li > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.checkout-summary li span,
+.checkout-summary li small {
+  color: #536b60;
+}
+
+.checkout-summary dl,
+.order-success-details {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.25rem 0 0;
+}
+
+.checkout-summary dl > div,
+.order-success-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.checkout-summary dd,
+.order-success-details dd {
+  margin: 0;
+  color: #173f34;
+  font-weight: 800;
+  text-align: right;
+}
+
+.checkout-summary__total {
+  padding-top: 0.75rem;
+  border-top: 1px solid #d5e1db;
+  font-size: 1.12rem;
+}
+
+.order-success-card {
+  width: min(100% - 2rem, 42rem);
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.order-success-card .menu-feedback__mark {
+  margin-bottom: 1rem;
+}
+
+.order-success-card > p:not(.eyebrow) {
+  color: #536b60;
+}
+
+.order-success-details {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f0f6f3;
+  text-align: left;
+}
+
+.order-success-card .button {
+  margin-top: 1.5rem;
+}
+
 .customer-footer {
   color: #dfe9e4;
   background: #173f34;
@@ -2897,6 +3118,16 @@ textarea {
     position: sticky;
     top: 6.25rem;
   }
+
+  .checkout-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 0.38fr);
+    align-items: start;
+  }
+
+  .checkout-summary {
+    position: sticky;
+    top: 6.25rem;
+  }
 }
 
 @media (max-width: 39.99rem) {
@@ -2972,6 +3203,14 @@ textarea {
 
   .cart-page__inner {
     width: min(100% - 1.25rem, 78rem);
+  }
+
+  .checkout-page__inner {
+    width: min(100% - 1.25rem, 78rem);
+  }
+
+  .checkout-submit {
+    width: 100%;
   }
 
   .cart-line__footer {

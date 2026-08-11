@@ -115,16 +115,19 @@ export function CartPage() {
             </dl>
             {hasBlockingIssues ? (
               <p className="cart-summary__warning">
-                Review the flagged items before checkout is introduced.
+                Review the flagged items before checkout.
               </p>
             ) : null}
-            <div className="cart-next-sprint">
-              <strong>Checkout is coming in Sprint 3.6.</strong>
-              <p>
-                No order has been created. The backend will recheck prices,
-                options, and availability before a future order is accepted.
-              </p>
-            </div>
+            <p className="cart-next-sprint">
+              Checkout securely rechecks your current menu selections before an
+              order is created.
+            </p>
+            <Link
+              className="button button-link"
+              to="/checkout"
+            >
+              Checkout
+            </Link>
             <Link className="button button-link button-secondary" to="/">
               Continue browsing
             </Link>

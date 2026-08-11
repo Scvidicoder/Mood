@@ -1,6 +1,6 @@
 # Database Design
 
-Version: 1.4 (Real Telegram authentication)
+Version: 1.5 (Sprint 3.6 checkout and orders)
 
 ## Overview
 
@@ -8,13 +8,14 @@ Mood Pickup uses PostgreSQL through EF Core migrations. The current database
 contains the authentication schema, the Sprint 3.1 menu domain, and
 the Sprint 3.2 employee menu audit log. Public/admin menu HTTP APIs are
 implemented. `RealTelegramAuthentication` extends login challenges and adds
-durable Telegram update idempotency. Sprint 3.3 adds filesystem media behavior without changing the
-database schema: PostgreSQL continues to store metadata only. Sprint 3.5 adds
-an anonymous browser-local cart and does not change PostgreSQL. Backend carts,
-orders, payments, and notification storage are not implemented.
+durable Telegram update idempotency. Sprint 3.3 adds filesystem media behavior
+without changing the database schema: PostgreSQL continues to store metadata
+only. Sprint 3.5 adds an anonymous browser-local cart. Sprint 3.6 adds the
+first persistent customer orders.
 
-The database is designed for one cafe. Future orders will store immutable menu
-snapshots so historical prices and names do not depend on current menu records.
+The database is designed for one cafe. Order items and options store immutable
+menu snapshots, so historical prices and names do not depend on later menu
+edits.
 
 ## Core principles
 
@@ -283,6 +284,65 @@ authentication secrets or large entity graphs. There is no audit update/delete
 API. The employee foreign key is restrictive so soft-deleting an employee
 preserves history.
 
+## Order entities
+
+### `Orders`
+
+- `Id` (`uuid`, primary key)
+- `CustomerId` (required foreign key)
+- `OrderNumber` (required, unique, maximum 32; e.g. `MP-20260807-00015`)
+- `Status` (`PendingConfirmation` or `Cancelled`)
+- `PaymentMethod` (`PayOnPickup` or `Online`)
+- `PickupMode` (`AsSoonAsPossible` or `Scheduled`)
+- `RequestedPickupTime` (null for ASAP; required for Scheduled)
+- immutable `CustomerName` and `CustomerPhoneNumber` snapshots
+- `Comment` (nullable, maximum 500)
+- `Subtotal`, `DiscountTotal`, `Total` (`numeric(12,2)`)
+- `Currency` (required, three characters)
+- `CreatedAt`
+- `RowVersion` (`uuid`)
+
+`DiscountTotal` is currently zero. Database checks require non-negative totals,
+`Total = Subtotal - DiscountTotal`, and a pickup time only for scheduled
+orders. There is no payment transaction, order confirmation, or staff workflow
+in this sprint.
+
+### `OrderItems`
+
+- `Id`
+- `OrderId` (required)
+- `ProductId` (historical GUID snapshot, deliberately not a product foreign key)
+- `ProductName`
+- `IsAvailableAtPurchase` (immutable product-availability snapshot)
+- `BasePrice`, `FinalPrice` (`numeric(12,2)`)
+- `Calories`, `VolumeMilliliters`, `WeightGrams` (nullable snapshots)
+- `Quantity` (1-99)
+- `Comment` (nullable)
+
+### `OrderItemOptions`
+
+- `Id`
+- `OrderItemId` (required)
+- `OptionGroupName`
+- `OptionValueName`
+- `PriceModifier` (`numeric(12,2)`)
+- `CaloriesModifier`, `VolumeModifier` (nullable)
+- `DisplayOrder`
+
+Order item options have no foreign key to menu assignments or global option
+values. Product/option deletes, renames, prices, availability, and assignment
+changes therefore never alter order history.
+
+### `OrderDailySequences`
+
+- `OrderDate` (date primary key)
+- `LastValue` (positive integer)
+
+Checkout increments this row with PostgreSQL `INSERT ... ON CONFLICT ... DO
+UPDATE ... RETURNING` inside the same serializable transaction as the order.
+This creates unique, daily sequential customer-facing order numbers while the
+GUID remains the primary key.
+
 ## Relationships and delete behavior
 
 | Relationship | Cardinality | Physical delete behavior |
@@ -296,6 +356,9 @@ preserves history.
 | ProductOptionGroup to ProductOptionValue | one-to-many | `Restrict` |
 | OptionValue to ProductOptionValue | one-to-many | `Restrict` |
 | Employee to EmployeeActionLog | one-to-many | `Restrict` |
+| Customer to Order | one-to-many | `Restrict` |
+| Order to OrderItem | one-to-many | `Cascade` |
+| OrderItem to OrderItemOption | one-to-many | `Cascade` |
 
 Menu records are not physically cascade-deleted. Existing Sprint 2 cascades
 for authentication-owned refresh tokens and employee-role joins are unchanged.
@@ -325,12 +388,20 @@ option-group assignments, and option-value assignments.
 - `EmployeeActionLogs(ActionType, CreatedAt)`
 - `EmployeeActionLogs(EntityType, EntityId, CreatedAt)`
 
+### Order indexes
+
+- unique `Orders(OrderNumber)`
+- `Orders(CustomerId, CreatedAt)` for newest-first customer history
+- `OrderItems(OrderId)`
+- `OrderItemOptions(OrderItemId, DisplayOrder)`
+
 ### Unique indexes
 
 - `MediaFiles(StorageProvider, StorageKey)`
 - active `OptionValues(OptionGroupId, NormalizedName)` where not deleted
 - `ProductOptionGroups(ProductId, OptionGroupId)`
 - `ProductOptionValues(ProductOptionGroupId, OptionValueId)`
+- `Orders(OrderNumber)`
 
 ### Check constraints
 
@@ -365,6 +436,12 @@ Administrative and historical code must call `IgnoreQueryFilters()` explicitly
 and deliberately when retrieving deleted rows. Authentication entities are not
 included in menu filters.
 
+Order snapshots never use menu foreign keys, so order retrieval does not depend
+on menu query filters or soft-deletion state. Checkout deliberately uses
+`IgnoreQueryFilters()` when validating requested menu identifiers so deleted
+and unavailable selections receive validation errors rather than being silently
+accepted or misclassified.
+
 ## Timestamps and concurrency
 
 `MoodPickupDbContext` applies UTC timestamps through `IHasTimestamps`.
@@ -379,7 +456,9 @@ PostgreSQL-safe and can later map to the documented API `rowVersion` string
 without using SQL Server `rowversion` or exposing PostgreSQL `xmin`.
 
 Concurrency is enabled for `Category`, `Product`, `OptionGroup`, `OptionValue`,
-`ProductOptionGroup`, and `ProductOptionValue`.
+`ProductOptionGroup`, `ProductOptionValue`, and `Order`. Checkout also uses a
+serializable PostgreSQL transaction to reject a conflicting menu change without
+leaving partial order data.
 
 ## Development seed
 
@@ -408,3 +487,5 @@ run in Testing or Production.
 - `20260806062531_Sprint2AuthenticationSecurity`
 - `20260806072221_Sprint3MenuDomain`
 - `20260806081107_Sprint3MenuApiAudit`
+- `20260806125941_RealTelegramAuthentication`
+- `20260807142646_Sprint36CheckoutOrders`

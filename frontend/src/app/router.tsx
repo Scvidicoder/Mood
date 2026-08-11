@@ -5,11 +5,13 @@ import { ApplicationLayout } from "../layouts/ApplicationLayout";
 import { StaffLayout } from "../layouts/StaffLayout";
 import { CustomerLoginPage } from "../pages/CustomerLoginPage";
 import { CustomerRegistrationPage } from "../pages/CustomerRegistrationPage";
+import { CheckoutPage } from "../pages/CheckoutPage";
 import { CartPage } from "../pages/CartPage";
 import { HealthPage } from "../pages/HealthPage";
 import { HomePage } from "../pages/HomePage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage";
+import { OrderSuccessPage } from "../pages/OrderSuccessPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { StaffLoginPage } from "../pages/StaffLoginPage";
 import { TelegramLinkPage } from "../pages/TelegramLinkPage";
@@ -42,6 +44,22 @@ export const router = createBrowserRouter([
       {
         path: "cart",
         element: <CartPage />,
+      },
+      {
+        path: "checkout",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <CheckoutPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "order-success/:id",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <OrderSuccessPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "login",

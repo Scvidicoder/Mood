@@ -1,15 +1,16 @@
 # Architecture
 
-Version: 1.5 (Sprint 3.5)
+Version: 1.6 (Sprint 3.6 checkout and orders)
 
 ## Goal
 
 Mood Pickup remains a single ASP.NET Core Web API backed directly by EF Core
 and PostgreSQL. Sprint 3.5 extends the public customer menu with an interactive
 frontend-owned local cart while consuming the existing projected public API.
-It does not add backend cart/order entities or abstraction layers. Real
-Telegram authentication remains inside the same API and adds only its focused
-authentication migration.
+Sprint 3.6 adds focused order entities and checkout services to the same API;
+it does not add a server cart, abstraction layers, or staff order workflow.
+Real Telegram authentication remains inside the same API and adds only its
+focused authentication migration.
 
 ## Repository
 
@@ -247,6 +248,33 @@ initial menu rendering. Snapshot differences become Updated; invalid
 configuration becomes Needs attention; missing/unavailable products remain
 visible as Unavailable.
 
+### Checkout and order snapshots
+
+`OrdersController` is customer-policy protected and delegates all creation and
+read behavior to `IOrderService`/`OrderService`. The local cart sends only a
+product GUID, selected global option-value GUIDs, quantity, and optional
+comments. It never sends a trusted price, currency, availability, image, or
+customer identity.
+
+The checkout service loads menu records with their soft-delete state, calls the
+existing `MenuConfigurationValidator`, validates selection compatibility and
+pickup rules, and calculates prices from PostgreSQL. It uses the validated JWT
+subject to load the customer profile and stores customer/contact, product
+availability, and option fields as immutable order snapshots. There are no
+order foreign keys to mutable menu records.
+
+For PostgreSQL, checkout begins a serializable transaction. The daily sequence
+uses one atomic `INSERT ... ON CONFLICT ... RETURNING` statement, then the
+order, items, and options are saved and committed together. Validation and
+concurrency failures leave no partial orders. The public API exposes only
+customer-owned records; another customer's ID resolves as `404`.
+
+`CheckoutOptions` is a validated, monitor-backed operational configuration:
+currency `TJS`, time zone `Asia/Dushanbe`, hours `10:00-22:00`, a fixed
+four-hour scheduling window, and 15-minute intervals by default. Replacing its
+configuration changes checkout validation without an API contract change. A
+staff configuration UI is intentionally outside this sprint.
+
 ## File storage
 
 `IMediaStorage` isolates provider operations. `LocalMediaStorage` resolves a
@@ -284,6 +312,9 @@ immutable caching. Physical paths are never returned.
   Sprint 3.5 adds configuration, decimal-safe price, Redux operations,
   persistence recovery/failure, canonical merge/edit, cart UI, cache reuse,
   bounded revalidation, stale lines, and semantic control coverage.
+- Sprint 3.6 adds order snapshot/validation unit coverage, PostgreSQL checkout
+  ownership and rollback coverage, and React checkout/navigation/cart-clearing
+  coverage.
 - Docker smoke validation covers the complete composed stack.
 
 No EF Core InMemory tests are used to claim relational menu behavior.
@@ -304,7 +335,7 @@ boundaries, and asynchronous APIs accept cancellation tokens where relevant.
 
 ## Future evolution
 
-Later work can add backend-revalidated checkout/order creation, cloud media
-storage, responsive image derivatives, immutable order snapshots, and
-full-text search without replacing the current menu API contract or local cart
-selection model.
+Later work can add staff order reception, kitchen flow, customer tracking,
+notifications, payment providers, discounts, delivery, cloud media storage,
+responsive image derivatives, and full-text search without replacing the
+current order API contract or local cart selection model.

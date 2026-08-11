@@ -33,4 +33,20 @@ public sealed class CurrentUserContext(IHttpContextAccessor httpContextAccessor)
 
         return employeeId;
     }
+
+    public Guid GetRequiredCustomerId()
+    {
+        var subject = httpContextAccessor.HttpContext?.User
+            .FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+        if (!Guid.TryParse(subject, out var customerId))
+        {
+            throw new ApiProblemException(
+                StatusCodes.Status401Unauthorized,
+                "unauthorized",
+                "Authentication required");
+        }
+
+        return customerId;
+    }
 }

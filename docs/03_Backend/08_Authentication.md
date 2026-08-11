@@ -1,7 +1,7 @@
 
 # Authentication and Authorization
 
-Version: 1.0
+Version: 1.1 (Sprint 3.6 checkout authorization)
 
 ## 1. Purpose
 
@@ -408,6 +408,13 @@ Customers may access only:
 - Their own profile
 - Their own orders
 - Their own notifications
+
+Sprint 3.6 enforces this with the `Customer` policy on `POST /orders`,
+`GET /orders/mine`, and `GET /orders/{id}`. Checkout derives the customer ID,
+name, and phone number from the validated access-token subject and the database
+profile; the request cannot choose a customer or submit contact identity. An
+order ID owned by another customer returns `404`, not a disclosure of the
+other order's existence.
 
 Sprint 3.5's anonymous cart is device-local frontend state and is not an
 authenticated server resource. If a future backend cart is introduced, it must

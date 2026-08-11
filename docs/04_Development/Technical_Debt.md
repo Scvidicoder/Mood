@@ -137,15 +137,18 @@ in-memory access-token, cancellation, and `ProblemDetails` behavior.
 ## Frontend end-to-end testing
 
 Vitest and React Testing Library cover staff authorization, administrative
-workflows, Sprint 3.4 public-menu behavior, and Sprint 3.5 configuration/cart
-behavior at the HTTP boundary and pure-model layers. Sprint 3.4 and Sprint 3.5
-also include documented manual real-browser passes across the Docker stack.
+workflows, Sprint 3.4 public-menu behavior, Sprint 3.5 configuration/cart
+behavior, and Sprint 3.6 checkout success/failure/navigation/cart-clearing
+behavior at the HTTP boundary and pure-model layers. The backend also has
+order snapshot/validation unit tests and real-PostgreSQL ownership/rollback
+coverage. These sprints include documented manual real-browser passes across
+the Docker stack.
 An automated browser-driven suite for responsive layout, network throttling,
 storage failure, and keyboard-only accessibility remains future work.
 
 ## Local cart authority and synchronization
 
-Sprint 3.5's cart is deliberately anonymous, device-local, and stored only
+The Sprint 3.5 cart remains deliberately anonymous, device-local, and stored only
 under `moodpickup.cart.v1`. It is not synchronized across browsers/devices,
 associated with a customer account, stored on the backend, or a stock
 reservation. Clearing site data removes it. Storage quota/private-mode
@@ -153,11 +156,12 @@ failures keep only the current in-memory copy.
 
 Product names, option labels, prices, modifiers, and availability inside the
 cart are untrusted display snapshots. Public detail revalidation provides
-customer guidance but cannot lock commercial truth. Sprint 3.6 must submit only
-public product/option identifiers and quantity, then recalculate price and
-revalidate product visibility, availability, orderability, option constraints,
-pickup rules, and stock on the backend. Clear the local cart only after
-successful order creation.
+customer guidance but cannot lock commercial truth. Sprint 3.6 submits only
+public product/option identifiers, quantity, and optional comments; checkout
+recalculates price and revalidates product visibility, availability,
+orderability, option constraints, and pickup rules on the backend. It clears
+the local cart only after successful order creation. Stock reservation is not
+implemented because the menu model has no inventory quantity yet.
 
 The current public contract exposes optional `volumeMilliliters` and `calories`
 on selected product option values, but does not distinguish additive modifiers
@@ -168,9 +172,33 @@ combined nutritional arithmetic, document additive/override semantics and
 extend the contract backward-compatibly rather than guessing in the client.
 
 The local client safety limits are 99 units per configuration and 100 distinct
-configurations. These defend browser state size and accidental input; they are
-not backend business guarantees. Sprint 3.6 must define authoritative order
-limits.
+configurations. Sprint 3.6 mirrors these as checkout request bounds (1-99 per
+item, at most 100 item configurations). They are request/operational safety
+limits, not a stock reservation or per-customer purchasing policy.
+
+## Checkout operations and future order workflow
+
+Sprint 3.6 persists immutable menu/contact/price/availability snapshots, validates the
+configured four-hour pickup window, and stores `PayOnPickup` or `Online` as an
+intent. It intentionally does not implement a payment provider, payment
+status, cancellation action, staff reception/kitchen/pickup boards, tracking,
+notifications, promotions, loyalty, delivery, or refunds. Each addition needs
+explicit status-transition, authorization, audit, retry, and privacy rules.
+
+Working hours live in validated `Checkout` deployment configuration and are
+read through `IOptionsMonitor`, so a reload-capable configuration source can
+change validation without a new API contract. The repository did not contain
+an administrator settings entity/UI before this sprint; implementing one would
+be a separate audited staff-settings feature. Until then, an operator changes
+the deployed configuration through the normal controlled release/configuration
+workflow.
+
+The current snapshot fields preserve existing option metric semantics: an
+unambiguous selected option value overrides the displayed calories/volume,
+otherwise the product default is retained. `OrderItemOptions` records the raw
+configured option values as `CaloriesModifier`/`VolumeModifier` for history.
+Before nutritional totals require arithmetic across options, document explicit
+additive-versus-override semantics and migrate the contract deliberately.
 
 ## Public brand assets and responsive media
 

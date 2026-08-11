@@ -3,6 +3,27 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/react") || id.includes("react-router-dom")) {
+            return "react-vendor";
+          }
+          if (
+            id.includes("@reduxjs") ||
+            id.includes("@tanstack/react-query")
+          ) {
+            return "state-vendor";
+          }
+          if (id.includes("@microsoft/signalr")) {
+            return "signalr-vendor";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",

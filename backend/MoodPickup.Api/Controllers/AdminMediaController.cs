@@ -18,7 +18,7 @@ public sealed class AdminMediaController(IMediaService mediaService) : Controlle
     [Consumes("multipart/form-data")]
     [ProducesResponseType<MediaImageDto>(StatusCodes.Status201Created)]
     public async Task<ActionResult<MediaImageDto>> UploadImage(
-        [FromForm(Name = "file")] IFormFile? file,
+        IFormFile? file,
         CancellationToken cancellationToken)
     {
         var result = await mediaService.UploadImageAsync(file, cancellationToken);

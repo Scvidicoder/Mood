@@ -145,6 +145,14 @@ export function persistCart(
   storage.setItem(CART_STORAGE_KEY, JSON.stringify(persisted));
 }
 
+export function clearBrowserCartStorage(): void {
+  try {
+    window.localStorage.removeItem(CART_STORAGE_KEY);
+  } catch {
+    // The Redux cart is still cleared even when browser storage is unavailable.
+  }
+}
+
 export function toPersistedLine(line: CartLine): PersistedCartLineV1 {
   return {
     id: line.id,

@@ -1,17 +1,15 @@
-const moneyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "TJS",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   dateStyle: "medium",
   timeStyle: "short",
 });
 
-export function formatMoney(value: number): string {
-  return moneyFormatter.format(value);
+export function formatMoney(value: number, currency = "TJS"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 export function formatMoneyMinor(value: number): string {

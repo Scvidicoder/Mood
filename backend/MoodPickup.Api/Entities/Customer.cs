@@ -15,4 +15,6 @@ public sealed class Customer
     public DateTimeOffset UpdatedAt { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
+
+    public ICollection<Order> Orders { get; set; } = [];
 }

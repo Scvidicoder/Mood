@@ -1,6 +1,6 @@
 # Local Development
 
-Version: 2.3 (Sprint 3.5)
+Version: 2.4 (Sprint 3.6 checkout and orders)
 
 ## Prerequisites
 
@@ -33,6 +33,22 @@ minimum, deployment must supply unique values for:
 - `AdministratorSeed__Password`
 - `ConnectionStrings__DefaultConnection`
 - `MediaStorage__RootPath` (a writable persistent path)
+
+Checkout configuration is validated at startup. Its defaults are:
+
+```text
+Checkout__Currency=TJS
+Checkout__TimeZoneId=Asia/Dushanbe
+Checkout__OpeningTime=10:00
+Checkout__ClosingTime=22:00
+Checkout__SchedulingWindowHours=4
+Checkout__PickupIntervalMinutes=15
+```
+
+The scheduling window and interval are intentionally fixed by the current API
+contract. A deployment/configuration update to business hours is observed by
+checkout validation without changing its HTTP contract; no staff settings UI
+exists in Sprint 3.6.
 
 Real Telegram mode additionally requires:
 
@@ -187,6 +203,7 @@ Current migrations:
 - `20260806072221_Sprint3MenuDomain`
 - `20260806081107_Sprint3MenuApiAudit`
 - `20260806125941_RealTelegramAuthentication`
+- `20260807142646_Sprint36CheckoutOrders`
 
 Production migrations are an explicit release step.
 
@@ -235,6 +252,8 @@ run. Do not point this variable at a database containing data to preserve.
 | Customer menu | <http://localhost:5173> |
 | Product details | `http://localhost:5173/product/{id}` |
 | Local cart | <http://localhost:5173/cart> |
+| Checkout (customer) | <http://localhost:5173/checkout> |
+| Order success (customer) | `http://localhost:5173/order-success/{id}` |
 | Customer login | <http://localhost:5173/login> |
 | Staff login | <http://localhost:5173/staff/login> |
 | Staff menu | <http://localhost:5173/staff/menu> |
@@ -356,9 +375,32 @@ tokens remain cookie-only and are unrelated to menu concurrency.
    confirm there is no page-level horizontal overflow.
 10. Confirm localStorage contains only the whitelisted cart schema and no
     access, refresh, CSRF, customer, staff, storage-key, or physical-path data.
-11. Confirm the cart presents Sprint 3.6 information rather than a functional
-    checkout/order action.
+11. Confirm the Checkout action opens `/checkout` for a signed-in customer and
+    redirects an anonymous visitor to customer sign-in.
 12. Confirm a fresh production tab has no console errors or warnings.
+
+### Manual Sprint 3.6 verification
+
+1. Sign in as a customer through the Development Telegram fake sender, then add
+   a current configurable item to the local cart.
+2. Open `/checkout`; confirm the name/phone are not requested again, every
+   selected option and total is shown, and the default is Prepare ASAP / Pay on
+   pickup.
+3. Select Scheduled pickup. Verify an empty time is blocked in the browser;
+   then try a past, tomorrow, non-15-minute, outside-hours, and more-than-four-
+   hours time. Each must return a validation error without clearing the cart.
+4. Submit a valid checkout. Confirm `/order-success/{id}` shows the `MP-...`
+   number, total, pickup mode, payment method, and `PendingConfirmation`.
+5. Confirm `moodpickup.cart.v1` is removed and Redux's cart badge is zero only
+   after the successful response.
+6. In Swagger, use the customer token to call `GET /api/v1/orders/mine` and
+   `GET /api/v1/orders/{id}`. A second customer's token must receive `404` for
+   the first customer's ID.
+7. Change a product name/price or option modifier as an administrator after
+   checkout. Confirm the existing order response still returns its original
+   snapshots.
+8. Inspect PostgreSQL: `Orders`, `OrderItems`, and `OrderItemOptions` contain
+   the created data; `OrderDailySequences` increments once for the café date.
 
 ## Troubleshooting
 

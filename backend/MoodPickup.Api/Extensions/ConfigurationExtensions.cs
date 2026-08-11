@@ -146,6 +146,26 @@ public static class ConfigurationExtensions
             .ValidateOnStart();
 
         services
+            .AddOptions<CheckoutOptions>()
+            .Bind(configuration.GetSection(CheckoutOptions.SectionName))
+            .Validate(
+                options => Regex.IsMatch(options.Currency, "^[A-Za-z]{3}$"),
+                "Checkout:Currency must be a three-letter ISO-style currency code.")
+            .Validate(
+                options => IsKnownTimeZone(options.TimeZoneId),
+                "Checkout:TimeZoneId must identify an available server time zone.")
+            .Validate(
+                options => IsValidTimeRange(options.OpeningTime, options.ClosingTime),
+                "Checkout:OpeningTime and Checkout:ClosingTime must use HH:mm and form a same-day range.")
+            .Validate(
+                options => options.SchedulingWindowHours == 4,
+                "Checkout:SchedulingWindowHours must be 4 for the current API contract.")
+            .Validate(
+                options => options.PickupIntervalMinutes == 15,
+                "Checkout:PickupIntervalMinutes must be 15 for the current API contract.")
+            .ValidateOnStart();
+
+        services
             .AddOptions<AdministratorSeedOptions>()
             .Bind(configuration.GetSection(AdministratorSeedOptions.SectionName))
             .Validate(
@@ -301,6 +321,40 @@ public static class ConfigurationExtensions
         {
             return false;
         }
+    }
+
+    private static bool IsKnownTimeZone(string timeZoneId)
+    {
+        try
+        {
+            _ = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return true;
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return false;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsValidTimeRange(string openingTime, string closingTime)
+    {
+        return TimeOnly.TryParseExact(
+                   openingTime,
+                   "HH:mm",
+                   System.Globalization.CultureInfo.InvariantCulture,
+                   System.Globalization.DateTimeStyles.None,
+                   out var opening) &&
+               TimeOnly.TryParseExact(
+                   closingTime,
+                   "HH:mm",
+                   System.Globalization.CultureInfo.InvariantCulture,
+                   System.Globalization.DateTimeStyles.None,
+                   out var closing) &&
+               opening < closing;
     }
 }
 

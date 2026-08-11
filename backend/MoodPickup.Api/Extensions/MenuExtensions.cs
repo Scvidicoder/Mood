@@ -32,6 +32,7 @@ public static class MenuExtensions
         services.AddScoped<IAdminOptionService, AdminOptionService>();
         services.AddScoped<IAdminProductConfigurationService, AdminProductConfigurationService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
+        services.AddScoped<IOrderService, OrderService>();
         return services;
     }
 

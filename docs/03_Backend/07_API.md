@@ -1,7 +1,7 @@
 
 # REST API Specification
 
-Version: 1.4 (Sprint 3.5)
+Version: 1.5 (Sprint 3.6)
 
 Version 1 base URL:
 
@@ -15,12 +15,12 @@ Content type:
 application/json
 ```
 
-Implemented through Sprint 3.5: authentication and session endpoints, system
+Implemented through Sprint 3.6: authentication and session endpoints, system
 and health endpoints, the public menu, interactive customer configuration and
-local cart UI, authorized menu administration, employee menu audit reads,
-secure image upload, and metadata-mediated public media delivery. The Sprint
-3.5 cart has no HTTP API; other sections describe planned Version 1 contracts
-only where explicitly labelled.
+local cart UI, authenticated customer checkout/orders, authorized menu
+administration, employee menu audit reads, secure image upload, and
+metadata-mediated public media delivery. Later staff, kitchen, payment,
+notification, and tracking endpoints remain explicitly planned only.
 
 Authentication:
 
@@ -59,11 +59,11 @@ Standard success responses use the appropriate HTTP status:
 
 ```json
 {
-  "type": "business_rule_violation",
-  "title": "Order cannot be cancelled",
+  "type": "concurrency_conflict",
+  "title": "The menu changed while checkout was being processed",
   "status": 409,
-  "code": "ORDER_CANNOT_BE_CANCELLED",
-  "detail": "The order is already being prepared."
+  "code": "CHECKOUT_CONCURRENCY_CONFLICT",
+  "detail": "Refresh the cart and try checkout again."
 }
 ```
 
@@ -556,9 +556,9 @@ response with `isAvailable=false`. Unassigned global values are never exposed.
 
 Sprint 3.5 renders this configuration as accessible radio/checkbox controls
 and uses the public base price/modifiers for an untrusted local preview.
-Selected public `optionValueId` values are retained for future checkout.
+Selected public `optionValueId` values are retained for checkout.
 `isOrderable` and `availabilityIssues` remain authoritative backend results;
-the API receives no cart/order mutation in this sprint.
+the API still recalculates all commercial values at checkout.
 
 ---
 
@@ -618,198 +618,172 @@ Requests verification for a new phone number.
 
 # 7. Cart
 
-Sprint 3.5 implements no cart API.
-
 The anonymous cart is a frontend-owned Redux draft persisted under
 `moodpickup.cart.v1`. It uses existing anonymous product-detail reads to
 configure and revalidate lines. No request is sent when a customer adds,
 updates, removes, or clears a cart line.
 
-The local cart retains the public identifiers Sprint 3.6 will need:
+The local cart supplies only these untrusted identifiers to checkout:
 
 ```json
 {
   "productId": "uuid",
   "quantity": 1,
-  "selectedOptionValueIds": [
+  "optionValueIds": [
     "uuid"
   ]
 }
 ```
 
-This is a conceptual future-checkout mapping, not an implemented request
-contract. Saved names, prices, modifiers, availability, and orderability are
-untrusted display snapshots. Sprint 3.6 must define an order/checkout endpoint
-that validates public identifiers and recalculates all commercial values on the
-backend.
+Saved names, prices, modifiers, availability, and orderability remain display
+snapshots only. `POST /orders` revalidates product visibility/orderability,
+option compatibility and availability, selection rules, and prices from
+PostgreSQL. The API never accepts cart price, currency, image, or availability
+fields as commercial truth.
 
-The previously planned `/cart` and `/cart/items` server routes are not
-implemented and clients must not call them.
+There is no server cart API. `/cart` and `/cart/items` are not implemented and
+clients must not call them.
 
 ---
 
 # 8. Checkout
 
-Planned for Sprint 3.6; not implemented. The examples below remain product
-direction rather than a callable contract. Because Sprint 3.5 has no server
-cart, Sprint 3.6 must add the local cart's product IDs, quantities, and selected
-option-value IDs to an authoritative backend validation/creation command (or
-document another explicit validated handoff). Current clients do not call
-these routes.
-
-## POST `/checkout/preview`
-
-Validates the cart and returns the final order calculation.
-
-### Request
-
-```json
-{
-  "pickupType": "Scheduled",
-  "requestedPickupTime": "2026-08-05T15:30:00+05:00",
-  "paymentMethod": "Online",
-  "comment": "No lid"
-}
-```
-
-### Response
-
-```json
-{
-  "customer": {
-    "name": "Ivan",
-    "phoneNumber": "+992900000000"
-  },
-  "items": [],
-  "subtotal": 79.00,
-  "total": 79.00,
-  "currency": "TJS",
-  "pickupType": "Scheduled",
-  "requestedPickupTime": "2026-08-05T15:30:00+05:00",
-  "paymentMethod": "Online",
-  "warnings": []
-}
-```
-
----
-
 ## POST `/orders`
 
-Creates a new order.
+Creates a persistent order from the authenticated customer's local cart draft.
+Requires the `Customer` policy; anonymous callers receive `401`. Customer name
+and phone number come from the authenticated profile and cannot be submitted
+by the client. Validation, daily order-number allocation, item/option snapshot
+creation, and commit run inside one serializable transaction.
 
 ### Request
 
 ```json
 {
-  "pickupType": "Asap",
-  "requestedPickupTime": null,
+  "items": [
+    {
+      "productId": "8a2ecf44-96f9-4c91-80a9-13c4d141d124",
+      "optionValueIds": ["b152d3b2-24fb-4dc8-ab8b-dc9f7041a3d2"],
+      "quantity": 2,
+      "comment": "Less foam"
+    }
+  ],
+  "pickupMode": "Scheduled",
+  "requestedPickupTime": "2026-08-07T15:30:00+05:00",
   "paymentMethod": "PayOnPickup",
-  "comment": "No lid",
-  "checkoutVersion": "opaque-version"
+  "comment": "Please keep it warm"
 }
 ```
 
-### Pay on Pickup Response
+`pickupMode` is `AsSoonAsPossible` or `Scheduled`; `paymentMethod` is
+`PayOnPickup` or `Online`. `Online` stores only the selected method and does
+not call a payment provider. For `AsSoonAsPossible`, `requestedPickupTime`
+must be null. For `Scheduled`, it is required and must be today, on a
+15-minute interval, inside configured business hours and the next four hours.
+The default café configuration is `Asia/Dushanbe`, `10:00-22:00`, and `TJS`.
+
+Checkout rejects missing, hidden, deleted, unavailable, or non-orderable
+products; unassigned, deleted, unavailable, duplicate, or incompatible option
+values; and unmet selection ranges. It recalculates all line/order totals. A
+failure returns RFC 7807 `400 validation_error` fields and writes no partial
+order. A menu concurrency conflict returns `409 CHECKOUT_CONCURRENCY_CONFLICT`.
+
+### Response (`201 Created`)
 
 ```json
 {
-  "orderId": "uuid",
-  "orderNumber": 152,
+  "id": "55d83050-08ff-458d-976e-e47c72cf6d75",
+  "orderNumber": "MP-20260807-00015",
   "status": "PendingConfirmation",
-  "paymentStatus": "PayOnPickup"
+  "paymentMethod": "PayOnPickup",
+  "pickupMode": "Scheduled",
+  "requestedPickupTime": "2026-08-07T10:30:00Z",
+  "comment": "Please keep it warm",
+  "subtotal": 48.00,
+  "discountTotal": 0.00,
+  "total": 48.00,
+  "currency": "TJS",
+  "createdAt": "2026-08-07T10:05:00Z",
+  "items": [
+    {
+      "productId": "8a2ecf44-96f9-4c91-80a9-13c4d141d124",
+      "productName": "Cappuccino",
+      "isAvailableAtPurchase": true,
+      "basePrice": 22.00,
+      "finalPrice": 24.00,
+      "quantity": 2,
+      "comment": "Less foam",
+      "options": [
+        {
+          "optionGroupName": "Size",
+          "optionValueName": "Small",
+          "priceModifier": 2.00,
+          "displayOrder": 1
+        }
+      ]
+    }
+  ]
 }
 ```
 
-### Online Payment Response
-
-```json
-{
-  "orderId": "uuid",
-  "orderNumber": 152,
-  "status": "AwaitingPayment",
-  "paymentUrl": "https://payment-provider.test/...",
-  "paymentExpiresAt": "2026-08-05T10:30:00Z"
-}
-```
+`finalPrice` is the server-calculated unit price. Item and selected-option
+values, including product availability at purchase time, are immutable
+snapshots; later menu edits do not alter historical
+orders. The human-readable order number is unique and sequential per café
+date; the primary key remains a GUID. `POST /checkout/preview` is not
+implemented.
 
 ---
 
 # 9. Customer Orders
 
-Planned, not implemented in Sprint 3.2.
+All endpoints in this section require the `Customer` policy. A customer can
+read only orders whose `CustomerId` matches the validated JWT subject. A lookup
+of another customer's order returns `404` rather than exposing its existence.
 
-## GET `/orders/current`
+## GET `/orders/mine`
 
-Returns all active customer orders.
-
----
-
-## GET `/orders/history`
+Returns newest-first summary records for the authenticated customer.
 
 Query parameters:
 
-- `page`
-- `pageSize`
+- `page` (default `1`, minimum `1`)
+- `pageSize` (default `20`, range `1-100`)
 
----
+### Response (`200 OK`)
+
+```json
+{
+  "items": [
+    {
+      "id": "55d83050-08ff-458d-976e-e47c72cf6d75",
+      "orderNumber": "MP-20260807-00015",
+      "status": "PendingConfirmation",
+      "paymentMethod": "PayOnPickup",
+      "pickupMode": "Scheduled",
+      "requestedPickupTime": "2026-08-07T10:30:00Z",
+      "total": 48.00,
+      "currency": "TJS",
+      "itemQuantity": 2,
+      "createdAt": "2026-08-07T10:05:00Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalCount": 1,
+  "totalPages": 1
+}
+```
 
 ## GET `/orders/{id}`
 
-### Response
+Returns the complete immutable order snapshot. Its response shape is the same
+as `POST /orders`. It returns `404 ORDER_NOT_FOUND` when the order does not
+exist or is not owned by the caller.
 
-```json
-{
-  "id": "uuid",
-  "orderNumber": 152,
-  "status": "Preparing",
-  "createdAt": "2026-08-05T09:20:00Z",
-  "requestedPickupTime": null,
-  "estimatedReadyTime": "2026-08-05T14:50:00+05:00",
-  "actualReadyAt": null,
-  "paymentMethod": "Online",
-  "paymentStatus": "Paid",
-  "refundStatus": "NotRequired",
-  "total": 79.00,
-  "currency": "TJS",
-  "comment": "No lid",
-  "items": [],
-  "canCancel": false,
-  "statusHistory": []
-}
-```
-
----
-
-## POST `/orders/{id}/cancel`
-
-Cancels the order when permitted.
-
-### Response
-
-Returns the updated order.
-
-### Errors
-
-- `409 ORDER_CANNOT_BE_CANCELLED`
-- `409 REFUND_INITIATION_FAILED`
-
----
-
-## POST `/orders/{id}/repeat`
-
-### Response
-
-```json
-{
-  "cart": {},
-  "changes": [
-    {
-      "type": "OPTION_REPLACED",
-      "message": "Oat milk was replaced with regular milk."
-    }
-  ]
-}
-```
+Only `PendingConfirmation` and `Cancelled` statuses exist in Sprint 3.6.
+There are no cancellation, repeat, staff, kitchen, payment, notification, or
+tracking endpoints yet.
 
 ---
 
@@ -1271,8 +1245,8 @@ Value assignment create request:
 ```
 
 Update omits `optionValueId` and adds `rowVersion`. Removal physically removes
-only the product-value join row; future orders use immutable snapshots, and no
-order data exists in this sprint.
+only the product-value join row; existing order snapshots are deliberately
+independent and are never changed by the removal.
 
 Wrong-group and duplicate values/groups are conflicts. A single group cannot
 have multiple defaults. Non-negative prices/dimensions and selection ranges
