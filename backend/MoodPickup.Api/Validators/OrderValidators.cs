@@ -36,7 +36,14 @@ public sealed class CreateOrderItemRequestValidator
     }
 }
 
-public sealed class OrderListQueryValidator : PaginationValidator<OrderListQuery>;
+public sealed class OrderListQueryValidator : PaginationValidator<OrderListQuery>
+{
+    public OrderListQueryValidator()
+    {
+        RuleFor(query => query.Filter).IsInEnum();
+        RuleFor(query => query.Search).MaximumLength(120);
+    }
+}
 
 public sealed class StaffOrderListQueryValidator
     : PaginationValidator<StaffOrderListQuery>;

@@ -130,6 +130,8 @@ public sealed class OrderService(
                     orderItem.Options.Add(new OrderItemOption
                     {
                         Id = Guid.NewGuid(),
+                        OptionGroupId = option.ProductOptionGroup.OptionGroupId,
+                        OptionValueId = option.OptionValueId,
                         OptionGroupName = option.ProductOptionGroup.OptionGroup.Name,
                         OptionValueName = option.OptionValue.Name,
                         PriceModifier = option.PriceModifier,
@@ -201,6 +203,31 @@ public sealed class OrderService(
         var orders = dbContext.Orders
             .AsNoTracking()
             .Where(order => order.CustomerId == customerId);
+
+        orders = query.Filter switch
+        {
+            CustomerOrderFilter.Active => orders.Where(order =>
+                order.Status == OrderStatus.PendingConfirmation ||
+                order.Status == OrderStatus.Confirmed ||
+                order.Status == OrderStatus.Preparing ||
+                order.Status == OrderStatus.ReadyForPickup),
+            CustomerOrderFilter.Completed => orders.Where(order =>
+                order.Status == OrderStatus.Completed),
+            CustomerOrderFilter.Cancelled => orders.Where(order =>
+                order.Status == OrderStatus.Cancelled),
+            CustomerOrderFilter.Rejected => orders.Where(order =>
+                order.Status == OrderStatus.Rejected),
+            _ => orders
+        };
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var normalizedSearch = query.Search.Trim().ToLowerInvariant();
+            orders = orders.Where(order =>
+                order.OrderNumber.ToLower().Contains(normalizedSearch) ||
+                order.Items.Any(item =>
+                    item.ProductName.ToLower().Contains(normalizedSearch)));
+        }
 
         var totalCount = await orders.CountAsync(cancellationToken);
         var items = await orders
@@ -285,6 +312,146 @@ public sealed class OrderService(
         }
 
         return OrderDtoMapper.ToCustomerDetail(order);
+    }
+
+    public async Task<RepeatOrderResultDto> RepeatAsync(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var customerId = currentUser.GetRequiredCustomerId();
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .Include(item => item.Items)
+                .ThenInclude(item => item.Options)
+            .SingleOrDefaultAsync(
+                item => item.Id == id && item.CustomerId == customerId,
+                cancellationToken)
+            ?? throw new ApiProblemException(
+                StatusCodes.Status404NotFound,
+                "not_found",
+                "Order not found",
+                "ORDER_NOT_FOUND");
+
+        var productIds = order.Items.Select(item => item.ProductId).Distinct().ToArray();
+        var products = await dbContext.Products
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(product => product.Category)
+            .Include(product => product.OptionGroups)
+                .ThenInclude(group => group.OptionGroup)
+            .Include(product => product.OptionGroups)
+                .ThenInclude(group => group.Values)
+                    .ThenInclude(value => value.OptionValue)
+            .Where(product => productIds.Contains(product.Id))
+            .ToDictionaryAsync(product => product.Id, cancellationToken);
+
+        var availableItems = new List<RepeatOrderItemDto>();
+        var unavailableItems = new List<RepeatOrderIssueDto>();
+        var currency = checkoutOptions.CurrentValue.Currency.ToUpperInvariant();
+
+        foreach (var historicalItem in order.Items.OrderBy(item => item.Id))
+        {
+            var reasons = new List<string>();
+            if (!products.TryGetValue(historicalItem.ProductId, out var product))
+            {
+                reasons.Add("This product no longer exists.");
+                unavailableItems.Add(ToRepeatIssue(historicalItem, reasons));
+                continue;
+            }
+
+            if (product.IsDeleted ||
+                !product.IsVisible ||
+                !product.IsAvailable ||
+                product.Category.IsDeleted ||
+                !product.Category.IsVisible)
+            {
+                reasons.Add("This product is not currently available to order.");
+            }
+
+            var orderability = menuConfigurationValidator.EvaluateOrderability(product);
+            reasons.AddRange(orderability.Issues.Select(issue => issue.Message));
+
+            var activeGroups = product.OptionGroups
+                .Where(group =>
+                    group.IsActive &&
+                    group.OptionGroup.IsActive &&
+                    !group.OptionGroup.IsDeleted)
+                .ToArray();
+            var selectedOptions = new List<ProductOptionValue>();
+
+            foreach (var historicalOption in historicalItem.Options
+                         .OrderBy(option => option.DisplayOrder)
+                         .ThenBy(option => option.OptionGroupName))
+            {
+                var matches = activeGroups
+                    .SelectMany(group => group.Values)
+                    .Where(value => MatchesHistoricalOption(value, historicalOption))
+                    .ToArray();
+
+                if (matches.Length != 1)
+                {
+                    reasons.Add(
+                        $"{historicalOption.OptionGroupName}: {historicalOption.OptionValueName} no longer exists for this product.");
+                    continue;
+                }
+
+                var currentOption = matches[0];
+                if (!IsAvailableForCheckout(currentOption))
+                {
+                    reasons.Add(
+                        $"{historicalOption.OptionGroupName}: {historicalOption.OptionValueName} is currently unavailable.");
+                    continue;
+                }
+
+                selectedOptions.Add(currentOption);
+            }
+
+            foreach (var group in activeGroups)
+            {
+                var selectedCount = selectedOptions.Count(option =>
+                    option.ProductOptionGroupId == group.Id);
+                if (selectedCount < group.MinimumSelections ||
+                    selectedCount > group.MaximumSelections ||
+                    group.OptionGroup.SelectionType == OptionSelectionType.Single &&
+                    selectedCount > 1)
+                {
+                    reasons.Add(
+                        $"The current selection requirements for {group.OptionGroup.Name} are not satisfied.");
+                }
+            }
+
+            var distinctReasons = reasons.Distinct(StringComparer.Ordinal).ToArray();
+            if (distinctReasons.Length > 0)
+            {
+                unavailableItems.Add(ToRepeatIssue(historicalItem, distinctReasons));
+                continue;
+            }
+
+            availableItems.Add(new RepeatOrderItemDto(
+                product.Id,
+                product.Name,
+                product.BasePrice,
+                product.BasePrice + selectedOptions.Sum(option => option.PriceModifier),
+                currency,
+                historicalItem.Quantity,
+                selectedOptions
+                    .OrderBy(option => option.ProductOptionGroup.DisplayOrder)
+                    .ThenBy(option => option.DisplayOrder)
+                    .Select(option => new RepeatOrderOptionDto(
+                        option.ProductOptionGroup.Id,
+                        option.ProductOptionGroup.OptionGroup.Name,
+                        option.OptionValueId,
+                        option.OptionValue.Name,
+                        option.PriceModifier,
+                        option.VolumeMilliliters,
+                        option.Calories))
+                    .ToArray()));
+        }
+
+        return new RepeatOrderResultDto(
+            order.OrderNumber,
+            availableItems,
+            unavailableItems);
     }
 
     private async Task<IReadOnlyList<ValidatedOrderItem>> ValidateItemsAsync(
@@ -520,6 +687,37 @@ public sealed class OrderService(
                value.OptionValue.IsActive &&
                !value.OptionValue.IsDeleted &&
                value.OptionValue.OptionGroupId == value.ProductOptionGroup.OptionGroupId;
+    }
+
+    private static bool MatchesHistoricalOption(
+        ProductOptionValue current,
+        OrderItemOption historical)
+    {
+        if (historical.OptionValueId is Guid optionValueId)
+        {
+            return current.OptionValueId == optionValueId &&
+                   (historical.OptionGroupId is null ||
+                    current.ProductOptionGroup.OptionGroupId == historical.OptionGroupId);
+        }
+
+        return string.Equals(
+                   current.ProductOptionGroup.OptionGroup.Name,
+                   historical.OptionGroupName,
+                   StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(
+                   current.OptionValue.Name,
+                   historical.OptionValueName,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static RepeatOrderIssueDto ToRepeatIssue(
+        OrderItem item,
+        IReadOnlyList<string> reasons)
+    {
+        return new RepeatOrderIssueDto(
+            item.ProductName,
+            item.Quantity,
+            reasons);
     }
 
     private static int? ConfiguredMetric(

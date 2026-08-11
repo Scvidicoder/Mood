@@ -8,6 +8,11 @@ public sealed class OrderItemOption
 
     public OrderItem OrderItem { get; set; } = null!;
 
+    // Historical identifiers only; deliberately not foreign keys to mutable menu data.
+    public Guid? OptionGroupId { get; set; }
+
+    public Guid? OptionValueId { get; set; }
+
     public string OptionGroupName { get; set; } = string.Empty;
 
     public string OptionValueName { get; set; } = string.Empty;

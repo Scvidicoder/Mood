@@ -40,7 +40,7 @@ export function ApplicationLayout() {
             </NavLink>
             {session?.accountType === "customer" ? (
               <>
-                <NavLink to="/orders">My orders</NavLink>
+                <NavLink to="/profile/orders">My orders</NavLink>
                 <NavLink to="/profile">Profile</NavLink>
               </>
             ) : (
@@ -70,7 +70,7 @@ export function ApplicationLayout() {
             <Link to="/">Menu</Link>
             <Link to="/cart">Cart</Link>
             {session?.accountType === "customer" ? (
-              <Link to="/orders">My orders</Link>
+              <Link to="/profile/orders">My orders</Link>
             ) : null}
             <Link to="/login">Customer sign in</Link>
             <Link to="/health">System health</Link>

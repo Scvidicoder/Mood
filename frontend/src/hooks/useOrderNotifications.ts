@@ -49,6 +49,7 @@ export function useOrderNotifications(orderId?: string): ConnectionState {
 
       void queryClient.invalidateQueries({ queryKey: ["orders", "mine"] });
       void queryClient.invalidateQueries({ queryKey: ["orders", event.entityId] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     };
 
     eventNames.forEach((eventName) => connection.on(eventName, handleUpdate));
@@ -56,6 +57,7 @@ export function useOrderNotifications(orderId?: string): ConnectionState {
     connection.onreconnected(() => {
       setState("Connected");
       void queryClient.invalidateQueries({ queryKey: ["orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
     });
     connection.onclose(() => setState("Disconnected"));
     void connection

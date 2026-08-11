@@ -1,7 +1,7 @@
 
 # Client UI Specification
 
-Version: 1.5 (Sprint 3.8)
+Version: 1.6 (Sprint 3.9)
 
 ## 1. Purpose
 
@@ -12,7 +12,9 @@ The customer interface is mobile-first and optimized for fast one-handed orderin
 The implemented UI includes anonymous browsing/configuration/cart, customer
 checkout, My Orders, and live order detail. Sprint 3.8 adds preparation,
 ready-for-pickup, payment-state, completion, progress, ETA, and status-history
-presentation. Online gateways and refunds remain planned.
+presentation. Sprint 3.9 adds the complete profile cabinet, searchable and
+filterable order history, rich timeline details, and reviewed repeat-order
+cart restoration. Online gateways and refunds remain planned.
 
 ## 2. Navigation Structure
 
@@ -25,12 +27,14 @@ Implemented customer routes:
 - `/orders`
 - `/order-success/{id}`
 - `/profile`
+- `/profile/orders`
+- `/profile/orders/{id}`
 - `/login`
 - `/verify`
 - `/register`
 
-Planned later routes include `/checkout`, `/orders/{id}`, and
-`/profile/orders`.
+`/orders` and `/order-success/{id}` remain compatible entry points from older
+customer flows. Profile navigation uses the Sprint 3.9 routes.
 
 Current global navigation:
 
@@ -453,18 +457,17 @@ Show the current state of one order in real time.
 
 - Public order number
 - Current status
-- Progress indicator
+- Created, confirmation, preparation, ready, and completion timestamps
+- Visual Created-to-Completed timeline with completed/current states
 - Requested pickup time
 - Estimated ready time
 - Actual ready time
 - Payment method
 - Payment status
-- Refund status
 - Items
-- Total price
+- immutable product/option names, base/unit/line prices, metrics, and totals
 - Comment
 - Café rejection reason
-- Last status update time
 
 ## 9.3 Order Progress
 
@@ -483,12 +486,11 @@ Terminal alternatives:
 
 ## 9.4 Real-Time Updates
 
-SignalR updates:
+Implemented SignalR updates:
 
 - Status
 - Estimated ready time
 - Payment state
-- Refund state
 
 The screen updates without refresh.
 
@@ -499,7 +501,7 @@ It disappears once the café confirms or rejects the order.
 
 Before cancellation, display confirmation.
 
-Online-paid orders show that a full refund will be initiated.
+Refund messaging is not implemented because refunds are outside Sprint 3.9.
 
 ## 9.6 Time Changes
 
@@ -535,7 +537,8 @@ Each order card displays:
 - Created date
 - Open details action
 
-Multiple active orders are allowed.
+Multiple active orders are allowed. Sprint 3.9 combines active and terminal
+orders on `/profile/orders` through the status filters described below.
 
 ---
 
@@ -543,7 +546,18 @@ Multiple active orders are allowed.
 
 ## 11.1 Goal
 
-Show completed, cancelled and rejected orders.
+Show all owned orders newest first with pagination.
+
+Filters:
+
+- All
+- Active
+- Completed
+- Cancelled
+- Rejected
+
+Search matches order number or product-name snapshot. Search-specific and
+active-order-specific empty states link back to the menu.
 
 Each card displays:
 
@@ -560,13 +574,16 @@ The system checks current product and option availability.
 
 Rules:
 
-- Unavailable products are not added
-- Unavailable optional values are removed
-- Unavailable required values are replaced by defaults when possible
+- Missing, hidden, deleted, or unavailable products are not added
+- Missing, incompatible, deleted, or unavailable selected options invalidate
+  that historical line
+- Current option selection requirements must still be satisfied
 - Current prices are always used
-- Customer sees a summary of all changes
+- Customer sees available and unavailable summaries before the cart changes
+- Products and options are never silently removed or substituted
 
-The repeated order is added to the cart, not created immediately.
+After explicit confirmation, only currently valid lines are added to the local
+cart. No order is created, and checkout revalidates the cart again.
 
 ---
 
@@ -575,24 +592,24 @@ The repeated order is added to the cart, not created immediately.
 ## 12.1 Displayed Data
 
 - Name
-- Phone number
+- Phone number (read-only)
+- Phone verified state
+- Telegram linked/not-linked state
+- Registration date
+- Active order count
+- Completed order count
 
 ## 12.2 Actions
 
 - Edit name
-- Change phone number
-- View current orders
-- View order history
+- View all orders
 - Logout
 
-## 12.3 Change Phone Number
+## 12.3 Editing boundary
 
-Flow:
-
-1. Enter new phone number
-2. Verify through Telegram
-3. Replace old phone number
-4. Keep order history and account data
+Only the trimmed name can be changed. Phone number and Telegram account are
+read-only. Name writes include the current profile row version and a stale
+session receives `PROFILE_VERSION_CONFLICT`.
 
 ---
 

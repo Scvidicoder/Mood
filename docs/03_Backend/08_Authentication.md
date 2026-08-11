@@ -1,7 +1,7 @@
 
 # Authentication and Authorization
 
-Version: 1.2 (Sprint 3.7 staff order authorization)
+Version: 1.3 (Sprint 3.9 customer profile authorization)
 
 ## 1. Purpose
 
@@ -175,7 +175,9 @@ Customer registration requires only a name.
 
 ## 2.8 Change Phone Number
 
-Changing the phone number requires verification of the new number.
+Planned only; changing the phone number is not implemented in Sprint 3.9 and
+the profile exposes it as read-only. A future flow requires verification of
+the new number.
 
 Rules:
 
@@ -415,6 +417,12 @@ name, and phone number from the validated access-token subject and the database
 profile; the request cannot choose a customer or submit contact identity. An
 order ID owned by another customer returns `404`, not a disclosure of the
 other order's existence.
+
+Sprint 3.9 applies the same policy and validated subject ownership to
+`GET /profile`, `PUT /profile`, and `POST /orders/{id}/repeat`. Profile
+responses omit customer IDs, employee data, and audit attribution. The repeat
+endpoint returns `404` for another customer's order and exposes only public
+menu identifiers required to rebuild valid local cart lines.
 
 Sprint 3.5's anonymous cart is device-local frontend state and is not an
 authenticated server resource. If a future backend cart is introduced, it must

@@ -1,42 +1,106 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { getMyOrders } from "../api/orders";
 import { ErrorState } from "../components/ErrorState";
 import { LoadingState } from "../components/LoadingState";
+import { RepeatOrderButton } from "../components/RepeatOrderButton";
 import { useOrderNotifications } from "../hooks/useOrderNotifications";
+import type { CustomerOrderFilter } from "../types/orders";
 import { formatDate, formatMoney } from "../utils/format";
 import {
   orderStatusLabel,
   pickupModeLabel,
 } from "../utils/orderPresentation";
 
+const filters: CustomerOrderFilter[] = [
+  "All",
+  "Active",
+  "Completed",
+  "Cancelled",
+  "Rejected",
+];
+
 export function MyOrdersPage() {
   const connectionState = useOrderNotifications();
+  const [filter, setFilter] = useState<CustomerOrderFilter>("All");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const orders = useQuery({
-    queryKey: ["orders", "mine", 1],
-    queryFn: ({ signal }) => getMyOrders(1, 100, signal),
+    queryKey: ["orders", "mine", { page, filter, search }],
+    queryFn: ({ signal }) =>
+      getMyOrders(page, 12, signal, filter, search || undefined),
     refetchInterval: connectionState === "Connected" ? false : 15_000,
   });
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPage(1);
+    setSearch(searchDraft.trim());
+  }
+
+  const isSearchEmpty = Boolean(search) && orders.data?.items.length === 0;
+  const emptyMessage = isSearchEmpty
+    ? "Nothing matches your search"
+    : filter === "Active"
+      ? "Your active orders will appear here"
+      : "No orders yet";
 
   return (
     <section className="page customer-orders-page">
       <div className="page-heading orders-heading">
         <div>
-          <p className="eyebrow">Customer orders</p>
+          <p className="eyebrow">Personal cabinet</p>
           <h1>My orders</h1>
-          <p>Track confirmation, preparation, pickup readiness, and completion here.</p>
+          <p>Search, review, track, and repeat your Mood Pickup orders.</p>
         </div>
         <span className={`connection-state connection-state--${connectionState.toLowerCase()}`}>
           Live updates: {connectionState}
         </span>
       </div>
 
+      <div className="customer-order-toolbar">
+        <div aria-label="Order status filters" className="customer-order-filters" role="group">
+          {filters.map((value) => (
+            <button
+              aria-pressed={filter === value}
+              className={filter === value ? "is-active" : ""}
+              key={value}
+              onClick={() => {
+                setFilter(value);
+                setPage(1);
+              }}
+              type="button"
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+        <form className="customer-order-search" onSubmit={submitSearch}>
+          <label className="sr-only" htmlFor="customer-order-search">Search orders</label>
+          <input
+            id="customer-order-search"
+            maxLength={120}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder="Order number or product"
+            type="search"
+            value={searchDraft}
+          />
+          <button className="button" type="submit">Search</button>
+        </form>
+      </div>
+
       {orders.isLoading ? <LoadingState message="Loading your orders…" /> : null}
       {orders.error ? <ErrorState error={orders.error} /> : null}
       {orders.data?.items.length === 0 ? (
-        <div className="placeholder-card">
-          <h2>No orders yet</h2>
-          <p>Your placed orders will appear here.</p>
+        <div className="placeholder-card customer-orders-empty">
+          <h2>{emptyMessage}</h2>
+          <p>
+            {isSearchEmpty
+              ? "Try another order number or product name."
+              : "When you place an order, its progress will be available here."}
+          </p>
           <Link className="button button-link" to="/">Browse the menu</Link>
         </div>
       ) : null}
@@ -64,12 +128,37 @@ export function MyOrdersPage() {
               {order.rejectReason ? (
                 <p className="order-reject-reason"><strong>Reason:</strong> {order.rejectReason}</p>
               ) : null}
-              <Link className="button button-secondary button-link" to={`/order-success/${order.id}`}>
-                View order
-              </Link>
+              <div className="customer-order-card__actions">
+                <Link className="button button-link" to={`/profile/orders/${order.id}`}>
+                  View details
+                </Link>
+                <RepeatOrderButton orderId={order.id} orderNumber={order.orderNumber} />
+              </div>
             </article>
           ))}
         </div>
+      ) : null}
+
+      {orders.data && orders.data.totalPages > 1 ? (
+        <nav aria-label="Order history pages" className="customer-order-pagination">
+          <button
+            className="button button-secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            type="button"
+          >
+            Previous
+          </button>
+          <span>Page {orders.data.page} of {orders.data.totalPages}</span>
+          <button
+            className="button button-secondary"
+            disabled={page >= orders.data.totalPages}
+            onClick={() => setPage((current) => current + 1)}
+            type="button"
+          >
+            Next
+          </button>
+        </nav>
       ) : null}
     </section>
   );

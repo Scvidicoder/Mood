@@ -143,6 +143,9 @@ the HTTP boundary and pure-model layers. The backend also has order
 snapshot/transition/notification unit tests and real-PostgreSQL
 ownership/authorization/concurrency coverage. These sprints include documented
 manual real-browser passes across the Docker stack.
+Sprint 3.9 adds component coverage for profile edits, customer navigation,
+filtered history, rich tracking details, and reviewed repeat-cart restoration,
+plus PostgreSQL profile concurrency and repeat ownership/search coverage.
 An automated browser-driven suite for responsive layout, network throttling,
 storage failure, and keyboard-only accessibility remains future work.
 
@@ -175,6 +178,28 @@ The local client safety limits are 99 units per configuration and 100 distinct
 configurations. Sprint 3.6 mirrors these as checkout request bounds (1-99 per
 item, at most 100 item configurations). They are request/operational safety
 limits, not a stock reservation or per-customer purchasing policy.
+
+Sprint 3.9 repeat-order validation remains a stateless server read followed by
+an explicit local Redux mutation. It does not create a server cart or
+synchronize the restored draft across devices. The API returns current public
+product/option identifiers and prices only for valid historical lines; checkout
+remains commercial authority.
+
+## Legacy repeat-order identifiers and history search
+
+Sprint 3.9 stores nullable historical option-group/value identifiers on new
+order snapshots and backfills Sprint 3.8 rows only when product and snapshot
+names produce exactly one current match. Ambiguous legacy rows intentionally
+remain null. Repeat validation may still resolve one exact current name match;
+otherwise it reports the line unavailable rather than guessing. A future data
+repair tool would require explicit operator review and is not justified for the
+current single-cafe dataset.
+
+Customer order search uses portable case-insensitive `contains` predicates over
+order number and immutable product-name snapshots. This is appropriate for the
+current per-customer history size but is not indexed full-text search. Measure
+history size and query latency before considering PostgreSQL trigram indexes or
+a dedicated search projection.
 
 ## Checkout operations and order workflow boundary
 

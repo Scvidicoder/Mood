@@ -205,6 +205,8 @@ Current migrations:
 - `20260806125941_RealTelegramAuthentication`
 - `20260807142646_Sprint36CheckoutOrders`
 - `20260811061908_Sprint37StaffOrderManagement`
+- `20260811073656_Sprint38KitchenWorkflow`
+- `20260811084037_Sprint39CustomerProfileOrderTracking`
 
 Production migrations are an explicit release step.
 
@@ -225,7 +227,8 @@ intentionally does nothing.
 
 ### PostgreSQL API integration tests
 
-Critical menu, media, checkout, and Sprint 3.7 staff-order API tests use a
+Critical menu, media, checkout, staff/kitchen workflow, and Sprint 3.9
+customer-profile/order API tests use a
 disposable real PostgreSQL database and an isolated temporary media directory.
 Start one example instance:
 
@@ -460,7 +463,43 @@ tokens remain cookie-only and are unrelated to menu concurrency.
    `Sprint37StaffOrderManagement`. Existing Online orders must be marked paid,
    existing orders must receive a baseline history row, and
    `dotnet ef migrations has-pending-model-changes` must report no pending
-   changes.
+    changes.
+
+### Manual Sprint 3.9 verification
+
+1. Sign in as a customer and open `/profile`. Verify name, read-only phone,
+   phone verification, Telegram linked state, registration date, active and
+   completed counts, and logout. Confirm no customer ID, employee, audit,
+   spending, or last-order information is shown.
+2. Edit the name with surrounding whitespace and verify the trimmed value and
+   a new row version. Submit the old version through Swagger and confirm RFC
+   7807 `409 PROFILE_VERSION_CONFLICT`. Verify empty, one-character, and
+   over-100-character names return validation ProblemDetails.
+3. Open `/profile/orders`; exercise All, Active, Completed, Cancelled, and
+   Rejected filters, pagination, order-number search, and product-name search.
+   Confirm newest-first ordering and the three empty-state variants.
+4. Open `/profile/orders/{id}` and verify public order number, all workflow
+   dates, ETA, payment method/status/date, comment, immutable product/option
+   snapshots, line prices, totals, highlighted visual timeline, and terminal
+   rejection/cancellation reason. Confirm no employee attribution is present.
+5. Keep profile, history, and detail pages open while staff changes status and
+   ETA. Verify SignalR updates detail/history/counts without refresh and that
+   15-second polling starts only after the hub disconnects.
+6. Repeat a fully available order. Verify the current-menu summary appears
+   before the cart changes, then confirm and inspect the restored local lines
+   and current prices. Checkout must still perform normal revalidation.
+7. Make one historical product unavailable and one selected option unavailable
+   or incompatible. Verify both are listed with reasons, are not silently
+   removed or substituted, and only explicitly available lines can be added.
+8. Use a second customer token for the first customer's detail and repeat URLs;
+   both must return `404 ORDER_NOT_FOUND`. Anonymous profile/order requests
+   must return `401`.
+9. Apply `Sprint39CustomerProfileOrderTracking` from a clean database and over
+   Sprint 3.8 with an existing customer/order. Verify a nonzero customer row
+   version, safe nullable legacy option backfill, and no pending model changes.
+10. Repeat profile, history, detail, and repeat-dialog flows at desktop, tablet,
+    and 390x844 mobile sizes. Confirm keyboard access, visible focus, readable
+    timeline/cards, and no page-level horizontal overflow or console errors.
 
 ## Troubleshooting
 

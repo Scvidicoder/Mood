@@ -1,6 +1,6 @@
 namespace MoodPickup.Api.Entities;
 
-public sealed class Customer
+public sealed class Customer : IHasTimestamps, IHasConcurrencyToken
 {
     public Guid Id { get; set; }
 
@@ -13,6 +13,8 @@ public sealed class Customer
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public Guid RowVersion { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 

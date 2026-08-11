@@ -148,6 +148,97 @@ public sealed class PostgresOrderApiTests(PostgresMoodPickupApiFactory factory)
         Assert.Equal((1, 1), countsAfterSuccess);
     }
 
+    [PostgresFact]
+    public async Task Profile_UpdateUsesOwnershipValidationAndOptimisticConcurrency()
+    {
+        await factory.ResetAsync();
+        using var client = factory.CreateSecureClient();
+
+        using var anonymous = await client.GetAsync("/api/v1/profile");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        var token = await factory.CreateCustomerTokenAsync();
+        using var getResponse = await SendAuthorizedAsync(
+            client,
+            HttpMethod.Get,
+            "/api/v1/profile",
+            token);
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+        var original = await ReadAsync<MoodPickup.Api.DTOs.CustomerProfileDto>(getResponse);
+        Assert.True(original.PhoneVerified);
+
+        var update = new MoodPickup.Api.DTOs.UpdateCustomerProfileRequest(
+            "  Updated Customer  ",
+            original.RowVersion);
+        using var updateResponse = await SendAuthorizedJsonAsync(
+            client,
+            HttpMethod.Put,
+            "/api/v1/profile",
+            token,
+            update);
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updated = await ReadAsync<MoodPickup.Api.DTOs.CustomerProfileDto>(updateResponse);
+        Assert.Equal("Updated Customer", updated.Name);
+        Assert.NotEqual(original.RowVersion, updated.RowVersion);
+
+        using var staleResponse = await SendAuthorizedJsonAsync(
+            client,
+            HttpMethod.Put,
+            "/api/v1/profile",
+            token,
+            update with { Name = "Stale name" });
+        Assert.Equal(HttpStatusCode.Conflict, staleResponse.StatusCode);
+        using var problem = JsonDocument.Parse(await staleResponse.Content.ReadAsStringAsync());
+        Assert.Equal(
+            "PROFILE_VERSION_CONFLICT",
+            problem.RootElement.GetProperty("code").GetString());
+    }
+
+    [PostgresFact]
+    public async Task CustomerHistoryFiltersSearchesAndRepeatStaysOwnerScoped()
+    {
+        await factory.ResetAsync();
+        using var client = factory.CreateSecureClient();
+        var request = await CreateCappuccinoRequestAsync();
+        var ownerToken = await factory.CreateCustomerTokenAsync();
+        var created = await CreateOrderAsync(client, ownerToken, request);
+        await factory.ReadDatabaseAsync(async db =>
+        {
+            var order = await db.Orders.SingleAsync(item => item.Id == created.Id);
+            order.Status = OrderStatus.Completed;
+            order.CompletedAt = factory.TimeProvider.GetUtcNow();
+            await db.SaveChangesAsync();
+            return true;
+        });
+
+        using var filteredResponse = await SendAuthorizedAsync(
+            client,
+            HttpMethod.Get,
+            "/api/v1/orders/mine?filter=Completed&search=cappuccino&page=1&pageSize=10",
+            ownerToken);
+        Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
+        var filtered = await ReadAsync<PagedResponse<OrderSummaryDto>>(filteredResponse);
+        Assert.Equal(created.Id, Assert.Single(filtered.Items).Id);
+
+        using var repeatResponse = await SendAuthorizedAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/v1/orders/{created.Id}/repeat",
+            ownerToken);
+        Assert.Equal(HttpStatusCode.OK, repeatResponse.StatusCode);
+        var repeat = await ReadAsync<RepeatOrderResultDto>(repeatResponse);
+        Assert.Single(repeat.AvailableItems);
+        Assert.Empty(repeat.UnavailableItems);
+
+        var otherToken = await factory.CreateCustomerTokenAsync();
+        using var otherResponse = await SendAuthorizedAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/v1/orders/{created.Id}/repeat",
+            otherToken);
+        Assert.Equal(HttpStatusCode.NotFound, otherResponse.StatusCode);
+    }
+
     private async Task<CreateOrderRequest> CreateCappuccinoRequestAsync()
     {
         var data = await factory.ReadDatabaseAsync(async db =>

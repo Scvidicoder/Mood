@@ -1,7 +1,7 @@
 
 # Notifications and SignalR
 
-Version: 1.1 (Sprint 3.7 customer order events)
+Version: 1.2 (Sprint 3.9 customer account consumers)
 
 ## Purpose
 
@@ -138,3 +138,13 @@ caches after reconnect, and ignore duplicate event IDs. Their HTTP polling is
 disabled while SignalR is connected and runs only as a disconnected fallback.
 Persisted notification inboxes, Telegram order messages, browser notifications,
 and guaranteed outbox delivery remain future work.
+
+## Sprint 3.9 customer account behavior
+
+`/profile`, `/profile/orders`, and `/profile/orders/{id}` reuse the existing
+authenticated customer group and order events; Sprint 3.9 adds no notification
+channel or event type. Each accepted event invalidates the affected detail,
+the filtered/paginated customer history queries, and profile order counts.
+Polling remains disabled while connected and runs every 15 seconds only as a
+fallback. Repeat-order validation is an explicit HTTP request and emits no
+SignalR event.

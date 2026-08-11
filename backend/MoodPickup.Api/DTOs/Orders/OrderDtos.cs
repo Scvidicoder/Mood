@@ -15,7 +15,21 @@ public sealed record CreateOrderItemRequest(
     int Quantity,
     string? Comment);
 
-public sealed class OrderListQuery : Menu.PaginationQuery;
+public sealed class OrderListQuery : Menu.PaginationQuery
+{
+    public CustomerOrderFilter Filter { get; init; } = CustomerOrderFilter.All;
+
+    public string? Search { get; init; }
+}
+
+public enum CustomerOrderFilter
+{
+    All,
+    Active,
+    Completed,
+    Cancelled,
+    Rejected
+}
 
 public sealed record OrderSummaryDto(
     Guid Id,
@@ -49,6 +63,8 @@ public sealed record OrderDetailDto(
     decimal Total,
     string Currency,
     DateTimeOffset CreatedAt,
+    DateTimeOffset? ConfirmedAt,
+    DateTimeOffset? RejectedAt,
     DateTimeOffset? EstimatedReadyAt,
     string? RejectReason,
     DateTimeOffset? PreparationStartedAt,
@@ -56,6 +72,7 @@ public sealed record OrderDetailDto(
     DateTimeOffset? CompletedAt,
     bool PaymentReceived,
     PaymentMethodUsed? PaymentMethodUsed,
+    DateTimeOffset? PaymentReceivedAt,
     IReadOnlyList<OrderStatusHistoryDto> StatusHistory,
     IReadOnlyList<OrderItemDto> Items);
 
@@ -99,3 +116,31 @@ public sealed record OrderItemOptionDto(
     int? CaloriesModifier,
     int? VolumeModifier,
     int DisplayOrder);
+
+public sealed record RepeatOrderResultDto(
+    string SourceOrderNumber,
+    IReadOnlyList<RepeatOrderItemDto> AvailableItems,
+    IReadOnlyList<RepeatOrderIssueDto> UnavailableItems);
+
+public sealed record RepeatOrderItemDto(
+    Guid ProductId,
+    string ProductName,
+    decimal BasePrice,
+    decimal UnitPrice,
+    string Currency,
+    int Quantity,
+    IReadOnlyList<RepeatOrderOptionDto> Options);
+
+public sealed record RepeatOrderOptionDto(
+    Guid ProductOptionGroupId,
+    string OptionGroupName,
+    Guid OptionValueId,
+    string OptionValueName,
+    decimal PriceModifier,
+    int? VolumeMilliliters,
+    int? Calories);
+
+public sealed record RepeatOrderIssueDto(
+    string ProductName,
+    int Quantity,
+    IReadOnlyList<string> Reasons);

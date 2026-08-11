@@ -12,6 +12,7 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.HasKey(customer => customer.Id);
         builder.Property(customer => customer.Name).HasMaxLength(100).IsRequired();
         builder.Property(customer => customer.PhoneNumber).HasMaxLength(16).IsRequired();
+        builder.Property(customer => customer.RowVersion).IsConcurrencyToken();
         builder.HasIndex(customer => customer.PhoneNumber).IsUnique();
         builder.HasIndex(customer => customer.TelegramChatId).IsUnique();
     }

@@ -55,6 +55,21 @@ public sealed class CompleteCustomerRegistrationRequestValidator
     }
 }
 
+public sealed class UpdateCustomerProfileRequestValidator
+    : AbstractValidator<UpdateCustomerProfileRequest>
+{
+    public UpdateCustomerProfileRequestValidator()
+    {
+        RuleFor(request => request.Name)
+            .NotEmpty()
+            .Must(name => name.Trim().Length >= 2)
+            .WithMessage("Name must contain at least 2 characters.")
+            .Must(name => name.Trim().Length <= 100)
+            .WithMessage("Name must contain at most 100 characters.");
+        RuleFor(request => request.RowVersion).NotEmpty();
+    }
+}
+
 public sealed class EmployeeLoginRequestValidator
     : AbstractValidator<EmployeeLoginRequest>
 {

@@ -67,4 +67,16 @@ public sealed class OrdersController(IOrderService orderService) : ControllerBas
     {
         return Ok(await orderService.CancelAsync(id, cancellationToken));
     }
+
+    /// <summary>Validates an owned historical snapshot against the current menu.</summary>
+    [HttpPost("{id:guid}/repeat")]
+    [ProducesResponseType<RepeatOrderResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RepeatOrderResultDto>> Repeat(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await orderService.RepeatAsync(id, cancellationToken));
+    }
 }

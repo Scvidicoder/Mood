@@ -20,4 +20,8 @@ public interface IOrderService
     Task<OrderDetailDto> CancelAsync(
         Guid id,
         CancellationToken cancellationToken);
+
+    Task<RepeatOrderResultDto> RepeatAsync(
+        Guid id,
+        CancellationToken cancellationToken);
 }

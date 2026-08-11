@@ -73,6 +73,8 @@ export interface OrderDetail {
   total: number;
   currency: string;
   createdAt: string;
+  confirmedAt?: string;
+  rejectedAt?: string;
   estimatedReadyAt?: string;
   rejectReason?: string;
   preparationStartedAt?: string;
@@ -80,6 +82,7 @@ export interface OrderDetail {
   completedAt?: string;
   paymentReceived: boolean;
   paymentMethodUsed?: PaymentMethodUsed;
+  paymentReceivedAt?: string;
   statusHistory: OrderStatusHistory[];
   items: OrderItem[];
 }
@@ -105,6 +108,45 @@ export interface OrderSummary {
 }
 
 export type CustomerOrdersPage = PagedResponse<OrderSummary>;
+
+export type CustomerOrderFilter =
+  | "All"
+  | "Active"
+  | "Completed"
+  | "Cancelled"
+  | "Rejected";
+
+export interface RepeatOrderOption {
+  productOptionGroupId: string;
+  optionGroupName: string;
+  optionValueId: string;
+  optionValueName: string;
+  priceModifier: number;
+  volumeMilliliters?: number;
+  calories?: number;
+}
+
+export interface RepeatOrderItem {
+  productId: string;
+  productName: string;
+  basePrice: number;
+  unitPrice: number;
+  currency: string;
+  quantity: number;
+  options: RepeatOrderOption[];
+}
+
+export interface RepeatOrderIssue {
+  productName: string;
+  quantity: number;
+  reasons: string[];
+}
+
+export interface RepeatOrderResult {
+  sourceOrderNumber: string;
+  availableItems: RepeatOrderItem[];
+  unavailableItems: RepeatOrderIssue[];
+}
 
 export interface StaffOrderSummary {
   id: string;

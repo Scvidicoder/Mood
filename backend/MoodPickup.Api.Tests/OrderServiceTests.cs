@@ -88,6 +88,69 @@ public sealed class OrderServiceTests
         Assert.Equal(0, await fixture.DbContext.OrderItems.CountAsync());
     }
 
+    [Fact]
+    public async Task Repeat_UsesStableSnapshotIdentifiersAndCurrentPrices()
+    {
+        await using var fixture = await OrderFixture.CreateAsync();
+        var service = fixture.CreateService();
+        var created = await service.CreateAsync(
+            new CreateOrderRequest(
+                [new CreateOrderItemRequest(
+                    fixture.Product.Id,
+                    [fixture.OptionValue.Id],
+                    2,
+                    null)],
+                null,
+                PaymentMethod.PayOnPickup,
+                PickupMode.AsSoonAsPossible,
+                null),
+            CancellationToken.None);
+        fixture.Product.BasePrice = 25m;
+        fixture.ProductOption.PriceModifier = 3m;
+        await fixture.DbContext.SaveChangesAsync();
+
+        var repeated = await service.RepeatAsync(
+            created.Id,
+            CancellationToken.None);
+
+        Assert.Empty(repeated.UnavailableItems);
+        var item = Assert.Single(repeated.AvailableItems);
+        Assert.Equal(28m, item.UnitPrice);
+        Assert.Equal(2, item.Quantity);
+        Assert.Equal(fixture.OptionValue.Id, Assert.Single(item.Options).OptionValueId);
+    }
+
+    [Fact]
+    public async Task Repeat_ReportsUnavailableOptionWithoutSubstitution()
+    {
+        await using var fixture = await OrderFixture.CreateAsync();
+        var service = fixture.CreateService();
+        var created = await service.CreateAsync(
+            new CreateOrderRequest(
+                [new CreateOrderItemRequest(
+                    fixture.Product.Id,
+                    [fixture.OptionValue.Id],
+                    1,
+                    null)],
+                null,
+                PaymentMethod.PayOnPickup,
+                PickupMode.AsSoonAsPossible,
+                null),
+            CancellationToken.None);
+        fixture.ProductOption.IsAvailable = false;
+        await fixture.DbContext.SaveChangesAsync();
+
+        var repeated = await service.RepeatAsync(
+            created.Id,
+            CancellationToken.None);
+
+        Assert.Empty(repeated.AvailableItems);
+        var unavailable = Assert.Single(repeated.UnavailableItems);
+        Assert.Contains(
+            unavailable.Reasons,
+            reason => reason.Contains("unavailable", StringComparison.OrdinalIgnoreCase));
+    }
+
     private sealed class OrderFixture : IAsyncDisposable
     {
         private readonly DbContextOptions<MoodPickupDbContext> _options;

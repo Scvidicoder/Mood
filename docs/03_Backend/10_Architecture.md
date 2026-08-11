@@ -1,6 +1,6 @@
 # Architecture
 
-Version: 1.7 (Sprint 3.7 staff order management)
+Version: 1.8 (Sprint 3.9 customer profile and order tracking)
 
 ## Goal
 
@@ -10,6 +10,9 @@ frontend-owned local cart while consuming the existing projected public API.
 Sprint 3.6 adds focused order entities and checkout services to the same API.
 Sprint 3.7 extends those entities and services with the staff order workflow;
 it does not add a server cart or new abstraction layers.
+Sprint 3.9 extends the same customer/order services with a profile cabinet,
+owned history projections, and repeat-order validation; it does not introduce
+a server cart, account aggregate, or new architectural layer.
 Real Telegram authentication remains inside the same API and adds only its
 focused authentication migration.
 
@@ -49,6 +52,10 @@ audit query services. `AdminMediaController` calls `IMediaService`, while the
 public media controller mediates reads through `MediaFile` metadata before
 opening `IMediaStorage`. Controllers do not modify EF graphs or manually
 inspect roles.
+
+`ProfileController` delegates safe profile reads and name updates to
+`ICustomerProfileService`. `OrdersController` continues to delegate owned
+creation, list, detail, cancellation, and repeat validation to `IOrderService`.
 
 ## Backend folders
 
@@ -160,6 +167,10 @@ Mutable menu records use an application-managed `Guid RowVersion`. EF Core
 treats it as a concurrency token and replaces it on each update. This provides
 a stable future API value while remaining portable to PostgreSQL and avoiding
 SQL Server-specific types.
+
+Customer profiles use the same application-managed GUID concurrency pattern.
+Only the name is mutable; a stale update is mapped deliberately to
+`PROFILE_VERSION_CONFLICT` rather than the menu conflict fallback.
 
 ## Development data
 
@@ -309,6 +320,33 @@ employee data. Customer and staff pages invalidate/update TanStack Query,
 ignore duplicate event IDs, reconnect automatically, and poll only while the
 connection is unavailable.
 
+### Customer profile, history, and repeat ordering
+
+`CustomerProfileService` reads the authenticated subject, projects only safe
+profile fields, calculates active/completed counts from owned orders, and
+updates a trimmed name with the customer row version. Phone and Telegram
+identity remain outside the update contract.
+
+`OrderService.GetMineAsync` composes ownership, lifecycle filter, order-number
+or product-snapshot search, newest-first ordering, and pagination in one EF
+query. Detail mapping adds all customer-safe workflow/payment timestamps while
+continuing to omit employee and audit attribution.
+
+Repeat validation loads the immutable historical items and current menu graph
+in the existing service. New snapshots retain nullable historical option
+group/value identifiers without foreign keys. Legacy name fallback is accepted
+only when exactly one current assignment matches. Each line must retain every
+selected option and satisfy current product orderability and group ranges;
+otherwise it is returned as unavailable with reasons. Valid results contain
+current public identifiers and prices for a local cart line. The HTTP call does
+not mutate the server, silently substitute data, or bypass checkout validation.
+
+The frontend keeps profile/order resources in TanStack Query and uses the
+existing SignalR hook to invalidate profile counts, filtered histories, and
+details. Redux receives repeat lines only after the customer reviews the
+validation summary and confirms. The local cart remains anonymous and
+device-local.
+
 ## File storage
 
 `IMediaStorage` isolates provider operations. `LocalMediaStorage` resolves a
@@ -355,6 +393,9 @@ immutable caching. Physical paths are never returned.
 - Sprint 3.8 adds forward workflow/history/payment/ETA/concurrency unit tests,
   real-PostgreSQL policy and endpoint tests, and React kitchen, completion,
   navigation, responsive-state, and expanded SignalR coverage.
+- Sprint 3.9 adds profile validation/concurrency/count tests, PostgreSQL
+  ownership/filter/search/repeat tests, and React profile, navigation, history,
+  detail, timeline, and reviewed repeat-cart coverage.
 - Docker smoke validation covers the complete composed stack.
 
 No EF Core InMemory tests are used to claim relational menu behavior.

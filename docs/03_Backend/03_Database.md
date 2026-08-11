@@ -1,6 +1,6 @@
 # Database Design
 
-Version: 1.7 (Sprint 3.8 kitchen workflow)
+Version: 1.8 (Sprint 3.9 customer profile and order tracking)
 
 ## Overview
 
@@ -14,7 +14,9 @@ only. Sprint 3.5 adds an anonymous browser-local cart. Sprint 3.6 adds the
 first persistent customer orders. Sprint 3.7 adds staff confirmation,
 rejection, estimated-ready-time, and employee attribution fields. Sprint 3.8
 adds the forward-only kitchen lifecycle, pickup payment and completion
-attribution, and immutable order status history.
+attribution, and immutable order status history. Sprint 3.9 adds optimistic
+customer-profile updates and stable nullable option identifiers to support
+current-menu validation of historical repeat orders.
 
 The database is designed for one cafe. Order items and options store immutable
 menu snapshots, so historical prices and names do not depend on later menu
@@ -40,6 +42,7 @@ edits.
 - `TelegramChatId` (nullable, unique when present)
 - `CreatedAt`
 - `UpdatedAt`
+- `RowVersion` (`uuid` concurrency token)
 
 ### `Employees`
 
@@ -353,6 +356,8 @@ customer DTOs expose status, timestamp, and reason without employee identity.
 
 - `Id`
 - `OrderItemId` (required)
+- `OptionGroupId` (nullable historical GUID, no menu foreign key)
+- `OptionValueId` (nullable historical GUID, no menu foreign key)
 - `OptionGroupName`
 - `OptionValueName`
 - `PriceModifier` (`numeric(12,2)`)
@@ -360,8 +365,12 @@ customer DTOs expose status, timestamp, and reason without employee identity.
 - `DisplayOrder`
 
 Order item options have no foreign key to menu assignments or global option
-values. Product/option deletes, renames, prices, availability, and assignment
-changes therefore never alter order history.
+values. The nullable identifiers preserve selected option identity for
+repeat-order validation without making the immutable snapshot depend on
+mutable menu rows. Sprint 3.9 backfills unambiguous legacy name matches;
+ambiguous legacy options stay null and are resolved only when exactly one
+current product assignment matches. Product/option deletes, renames, prices,
+availability, and assignment changes never alter order history.
 
 ### `OrderDailySequences`
 
@@ -491,8 +500,8 @@ so a stale writer receives `DbUpdateConcurrencyException`. This is
 PostgreSQL-safe and can later map to the documented API `rowVersion` string
 without using SQL Server `rowversion` or exposing PostgreSQL `xmin`.
 
-Concurrency is enabled for `Category`, `Product`, `OptionGroup`, `OptionValue`,
-`ProductOptionGroup`, `ProductOptionValue`, and `Order`. Checkout also uses a
+Concurrency is enabled for `Customer`, `Category`, `Product`, `OptionGroup`,
+`OptionValue`, `ProductOptionGroup`, `ProductOptionValue`, and `Order`. Checkout also uses a
 serializable PostgreSQL transaction to reject a conflicting menu change without
 leaving partial order data.
 
@@ -527,7 +536,14 @@ run in Testing or Production.
 - `20260807142646_Sprint36CheckoutOrders`
 - `20260811061908_Sprint37StaffOrderManagement`
 - `20260811073656_Sprint38KitchenWorkflow`
+- `20260811084037_Sprint39CustomerProfileOrderTracking`
 
 The Sprint 3.8 migration works on a clean database and over Sprint 3.7. During
 upgrade it marks existing `Online` orders paid and backfills one baseline
 history row for every existing order before new transitions are accepted.
+
+The Sprint 3.9 migration works on a clean database and over Sprint 3.8. It
+assigns a nonzero random row version to every existing customer and backfills
+historical option-group/value identifiers only when the product/name match is
+unambiguous. Nullable unmatched identifiers preserve history and cause repeat
+validation to report uncertainty rather than guess.

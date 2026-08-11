@@ -1,7 +1,7 @@
 
 # REST API Specification
 
-Version: 1.7 (Sprint 3.8)
+Version: 1.8 (Sprint 3.9)
 
 Version 1 base URL:
 
@@ -15,15 +15,16 @@ Content type:
 application/json
 ```
 
-Implemented through Sprint 3.8: authentication and session endpoints, system
+Implemented through Sprint 3.9: authentication and session endpoints, system
 and health endpoints, the public menu, interactive customer configuration and
 local cart UI, authenticated customer checkout/orders, authorized menu
 administration, employee menu/order audit reads, secure image upload,
 metadata-mediated public media delivery, staff order confirmation/rejection,
 the active kitchen dashboard/API, ETA/preparation/ready transitions, pickup
-payment, completion, immutable status history, and customer/staff SignalR order
-updates. Online payment gateways, refunds, and persisted notification inboxes
-remain planned.
+payment, completion, immutable status history, customer/staff SignalR order
+updates, customer profile management, searchable/filterable owned history,
+rich tracking details, and repeat-order validation. Online payment gateways,
+refunds, and persisted notification inboxes remain planned.
 
 Authentication:
 
@@ -567,55 +568,43 @@ the API still recalculates all commercial values at checkout.
 
 # 6. Customer Profile
 
-Planned, not implemented in Sprint 3.2.
+Both endpoints require the `Customer` policy and derive the owner from the
+validated JWT subject. Phone and Telegram identities are read-only.
 
-## GET `/me`
+## GET `/profile`
 
 ### Response
 
 ```json
 {
-  "id": "uuid",
   "name": "Ivan",
   "phoneNumber": "+992900000000",
-  "createdAt": "2026-08-05T10:00:00Z"
+  "phoneVerified": true,
+  "telegramLinked": true,
+  "registrationDate": "2026-08-05T10:00:00Z",
+  "activeOrderCount": 2,
+  "completedOrderCount": 5,
+  "rowVersion": "uuid"
 }
 ```
 
 ---
 
-## PATCH `/me`
+## PUT `/profile`
 
 ### Request
 
 ```json
 {
-  "name": "Ivan Updated"
+  "name": "Ivan Updated",
+  "rowVersion": "uuid"
 }
 ```
 
-### Response
-
-Returns the updated profile.
-
----
-
-## POST `/me/change-phone/request-code`
-
-Requests verification for a new phone number.
-
----
-
-## POST `/me/change-phone/confirm`
-
-### Request
-
-```json
-{
-  "challengeId": "uuid",
-  "code": "123456"
-}
-```
+The service trims the name and requires 2-100 characters. A successful write
+returns the complete updated profile and a new row version. A stale token
+returns RFC 7807 `409 PROFILE_VERSION_CONFLICT`. Phone-number and Telegram
+changes are not implemented in Sprint 3.9.
 
 ---
 
@@ -752,6 +741,12 @@ Query parameters:
 
 - `page` (default `1`, minimum `1`)
 - `pageSize` (default `20`, range `1-100`)
+- `filter`: `All`, `Active`, `Completed`, `Cancelled`, or `Rejected`
+- `search`: optional maximum-120-character order-number or product-name search
+
+`Active` includes PendingConfirmation, Confirmed, Preparing, and
+ReadyForPickup. Filtering and search run in PostgreSQL before newest-first
+pagination.
 
 ### Response (`200 OK`)
 
@@ -788,7 +783,53 @@ exist or is not owned by the caller.
 
 The detail and list contracts return every workflow status, nullable workflow
 timestamps, payment state, `estimatedReadyAt`, and `rejectReason`. Detail also
-returns append-only status history without employee identity.
+returns confirmation, rejection, payment-received, preparation, ready, and
+completion timestamps; immutable item/option price and metric snapshots; and
+append-only status history without employee identity.
+
+## POST `/orders/{id}/repeat`
+
+Validates an owned historical order against the current menu without changing
+the server or local cart. Another customer's ID returns `404 ORDER_NOT_FOUND`.
+
+```json
+{
+  "sourceOrderNumber": "MP-20260807-00015",
+  "availableItems": [
+    {
+      "productId": "uuid",
+      "productName": "Cappuccino",
+      "basePrice": 22.00,
+      "unitPrice": 24.00,
+      "currency": "TJS",
+      "quantity": 2,
+      "options": [
+        {
+          "productOptionGroupId": "uuid",
+          "optionGroupName": "Size",
+          "optionValueId": "uuid",
+          "optionValueName": "Small",
+          "priceModifier": 2.00
+        }
+      ]
+    }
+  ],
+  "unavailableItems": [
+    {
+      "productName": "Seasonal Latte",
+      "quantity": 1,
+      "reasons": ["This product is not currently available to order."]
+    }
+  ]
+}
+```
+
+Current products, visibility, availability, assignments, selected option
+availability, and group selection ranges must all remain valid. Prices and
+names in `availableItems` are current menu values. Invalid lines are reported
+whole; no product or option is silently removed or substituted. The frontend
+shows this result before adding available lines to the anonymous cart, and
+normal checkout revalidation still applies.
 
 ## POST `/orders/{id}/cancel`
 
@@ -1532,6 +1573,10 @@ by EF still returns `409 MENU_VERSION_CONFLICT` without exposing internals.
 
 Order conflicts return `409 ORDER_VERSION_CONFLICT`; pre-detected stale order
 requests include the current order ID and row version in `currentResource`.
+
+Customer name updates use the profile `rowVersion`. A stale profile request
+returns `409 PROFILE_VERSION_CONFLICT` without exposing an internal customer
+identifier or other profile data.
 
 Menu error codes include:
 

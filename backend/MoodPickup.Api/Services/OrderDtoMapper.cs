@@ -20,6 +20,8 @@ internal static class OrderDtoMapper
             order.Total,
             order.Currency,
             order.CreatedAt,
+            order.ConfirmedAt,
+            order.RejectedAt,
             order.EstimatedReadyAt,
             order.RejectReason,
             order.PreparationStartedAt,
@@ -27,6 +29,7 @@ internal static class OrderDtoMapper
             order.CompletedAt,
             order.PaymentReceived,
             order.PaymentMethodUsed,
+            order.PaymentReceivedAt,
             ToStatusHistory(order),
             ToItems(order));
     }

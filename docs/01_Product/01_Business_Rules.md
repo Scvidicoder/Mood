@@ -157,3 +157,39 @@ Each record stores:
 - action
 - target entity
 - description
+
+---
+
+# Customer Account
+
+## BR-023 – Editable customer data
+
+An authenticated customer may edit only their trimmed display name in Sprint
+3.9. Phone-number and Telegram-link changes require future dedicated secure
+flows and are read-only in the profile.
+
+## BR-024 – Customer ownership
+
+Profile, order list, order detail, and repeat-order reads are derived from the
+validated customer subject. Another customer's order identifier returns not
+found and never exposes customer, employee, audit, or internal attribution
+data.
+
+## BR-025 – Customer order history
+
+Order history is newest first, paginated, filterable by lifecycle group, and
+searchable by order number or immutable product-name snapshot.
+
+## BR-026 – Repeat order validation
+
+Repeating an order validates its historical product and selected-option
+identifiers against the current menu. Current prices are used. A missing,
+hidden, deleted, unavailable, incompatible, or newly invalid configuration is
+reported before any cart change. Invalid lines are not added, and the system
+never silently removes an option or substitutes a product or option.
+
+## BR-027 – Repeat order destination
+
+Repeat order validation does not create an order. After the customer reviews
+the result, only explicitly available lines are added to the anonymous local
+cart and normal checkout revalidation remains authoritative.

@@ -1,6 +1,7 @@
 import type {
   CreateOrderInput,
   ConfirmOrderInput,
+  CustomerOrderFilter,
   CustomerOrdersPage,
   KitchenOrder,
   KitchenOrderFilters,
@@ -9,6 +10,7 @@ import type {
   OrderVersionInput,
   OrderStatus,
   RecordPaymentInput,
+  RepeatOrderResult,
   RejectOrderInput,
   StaffOrderDetail,
   StaffOrdersPage,
@@ -29,11 +31,17 @@ export function getMyOrders(
   page = 1,
   pageSize = 20,
   signal?: AbortSignal,
+  filter: CustomerOrderFilter = "All",
+  search?: string,
 ): Promise<CustomerOrdersPage> {
   return apiClient.get<CustomerOrdersPage>(
-    `orders/mine${queryString({ page, pageSize })}`,
+    `orders/mine${queryString({ page, pageSize, filter, search })}`,
     { signal },
   );
+}
+
+export function repeatOrder(id: string): Promise<RepeatOrderResult> {
+  return apiClient.post<RepeatOrderResult>(`orders/${id}/repeat`);
 }
 
 export function cancelOrder(id: string): Promise<OrderDetail> {

@@ -98,6 +98,22 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "profile/orders",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <MyOrdersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "profile/orders/:id",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <OrderSuccessPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "staff/login",
         element: <StaffLoginPage />,
       },

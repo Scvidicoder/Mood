@@ -1,7 +1,7 @@
 # Mood Pickup
 
 Mood Pickup is a pickup-ordering platform for Mood Dushanbe. The current
-foundation includes the Sprint 3.8 kitchen workflow and real
+foundation includes the Sprint 3.9 customer cabinet, the Sprint 3.8 kitchen workflow, and real
 Telegram customer authentication:
 
 - ASP.NET Core 8 Web API with PostgreSQL and EF Core;
@@ -53,6 +53,12 @@ Telegram customer authentication:
 - customer My Orders and live order tracking for confirmation, rejection,
   preparation, ETA, ready, payment, and completion updates through authenticated
   SignalR groups, with polling only as a disconnected fallback;
+- a complete `/profile` customer cabinet with safe account information,
+  editable name, Telegram/phone state, registration date, and live active and
+  completed order counts protected by optimistic concurrency;
+- searchable, filterable, newest-first order history under `/profile/orders`,
+  responsive snapshot details and visual timelines, plus current-menu
+  repeat-order validation that never silently removes or substitutes an item;
 - backend authentication/domain/order tests, real-PostgreSQL menu/media/order
   API tests, and network-boundary frontend Vitest coverage;
 - Docker Compose local orchestration with persistent PostgreSQL and media
@@ -178,7 +184,8 @@ the in-memory cart usable and show a non-blocking warning.
 | Local cart | <http://localhost:5173/cart> |
 | Checkout (customer) | <http://localhost:5173/checkout> |
 | Order success (customer) | `http://localhost:5173/order-success/{id}` |
-| My orders (customer) | <http://localhost:5173/orders> |
+| My orders (customer) | <http://localhost:5173/profile/orders> |
+| Order details (customer) | `http://localhost:5173/profile/orders/{id}` |
 | Customer login | <http://localhost:5173/login> |
 | Customer profile | <http://localhost:5173/profile> |
 | Staff login | <http://localhost:5173/staff/login> |
@@ -211,6 +218,7 @@ the in-memory cart usable and show a non-blocking warning.
 - `20260807142646_Sprint36CheckoutOrders`
 - `20260811061908_Sprint37StaffOrderManagement`
 - `20260811073656_Sprint38KitchenWorkflow`
+- `20260811084037_Sprint39CustomerProfileOrderTracking`
 
 ```powershell
 dotnet ef migrations list --project backend/MoodPickup.Api --startup-project backend/MoodPickup.Api -- --environment Development
