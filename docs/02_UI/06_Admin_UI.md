@@ -1,6 +1,6 @@
 # Admin UI Specification
 
-Version: 1.1 (Sprint 3.3)
+Version: 1.2 (Sprint 4.0)
 
 ## Purpose and scope
 
@@ -16,9 +16,9 @@ Implemented roles:
 - Other employees: authenticated dashboard/profile only; protected menu routes
   return a forbidden page.
 
-Reception, kitchen, pickup boards, employee management, orders, working hours,
-cafe settings, analytics, and the customer menu UI are not implemented in this
-sprint.
+Sprint 4.0 extends this shell with Administrator-only employee management.
+Working-hours editing, cafe settings, analytics, role-definition management,
+and employee self-registration remain outside scope.
 
 ## Routes
 
@@ -37,6 +37,9 @@ sprint.
 /staff/menu/option-groups/:id
 /staff/audit-log
 /staff/audit-log/:id
+/staff/employees
+/staff/employees/new
+/staff/employees/:id
 ```
 
 `/staff/login` remains the unauthenticated employee entry point.
@@ -148,3 +151,19 @@ controls. Reorder actions have descriptive accessible names. Dialogs use modal
 semantics, Escape handling, focus placement/trapping, and reasonable touch
 targets. Focus indicators and screen-reader live regions cover uploads,
 connection state, mutations, and toasts.
+
+## Employee management
+
+The Employees navigation item and routes require the frontend
+`manageEmployees` capability, which maps only to Administrator. List queries
+use server search, role/status filters, and pagination. Create/edit uses the
+authorized backend role option endpoint and supports multiple roles.
+
+Disable, enable, and reset require confirmation. Self-disable includes an
+explicit warning. All mutations send the current GUID row version. The UI
+surfaces `LAST_ADMINISTRATOR_PROTECTION` and `EMPLOYEE_VERSION_CONFLICT`
+directly instead of replacing them with generic failures.
+
+Temporary passwords returned by create/reset are copied from short-lived local
+component state. Navigation or dismissal removes the only frontend copy;
+TanStack Query, Redux, URLs, and browser storage never receive it.

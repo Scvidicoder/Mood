@@ -1,38 +1,66 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using MoodPickup.Api.Infrastructure;
+using MoodPickup.Api.Services;
 
 namespace MoodPickup.Api.Authorization;
 
-public sealed record EmployeePermissionRequirement(params string[] AllowedRoles)
+public sealed record EmployeePermissionRequirement(
+    string Permission,
+    params string[] AllowedRoles)
     : IAuthorizationRequirement;
 
-public sealed class EmployeePermissionAuthorizationHandler
+public sealed class EmployeePermissionAuthorizationHandler(
+    EmployeeAccessStateService accessStateService)
     : AuthorizationHandler<EmployeePermissionRequirement>
 {
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         EmployeePermissionRequirement requirement)
     {
         var isEmployee =
             context.User.FindFirst(AuthenticationConstants.AccountTypeClaim)?.Value ==
             AuthenticationConstants.AccountTypes.Employee;
-        var mustChangePassword =
-            string.Equals(
-                context.User.FindFirst(AuthenticationConstants.MustChangePasswordClaim)?.Value,
-                bool.TrueString,
-                StringComparison.OrdinalIgnoreCase);
-
-        if (!isEmployee || mustChangePassword)
+        if (!isEmployee ||
+            !Guid.TryParse(
+                context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value,
+                out var employeeId))
         {
-            return Task.CompletedTask;
+            return;
         }
 
-        if (context.User.IsInRole(AuthenticationConstants.Roles.Administrator) ||
-            requirement.AllowedRoles.Any(context.User.IsInRole))
+        var state = await accessStateService.GetAsync(employeeId);
+        var sessionVersion = context.User.FindFirst(
+            AuthenticationConstants.EmployeeSessionVersionClaim)?.Value;
+        if (state is null ||
+            !state.IsActive ||
+            state.MustChangePassword ||
+            !Guid.TryParse(sessionVersion, out var tokenSessionVersion) ||
+            tokenSessionVersion != state.SessionVersion)
+        {
+            return;
+        }
+
+        var permissionOverride = state.PermissionOverrides.FirstOrDefault(
+            permission => permission.Permission == requirement.Permission);
+        if (permissionOverride is not null)
+        {
+            if (permissionOverride.IsAllowed)
+            {
+                context.Succeed(requirement);
+            }
+
+            return;
+        }
+
+        if (state.Roles.Contains(
+                AuthenticationConstants.Roles.Administrator,
+                StringComparer.Ordinal) ||
+            requirement.AllowedRoles.Any(role => state.Roles.Contains(
+                role,
+                StringComparer.Ordinal)))
         {
             context.Succeed(requirement);
         }
-
-        return Task.CompletedTask;
     }
 }

@@ -193,3 +193,47 @@ never silently removes an option or substitutes a product or option.
 Repeat order validation does not create an order. After the customer reviews
 the result, only explicitly available lines are added to the anonymous local
 cart and normal checkout revalidation remains authoritative.
+
+# Employee Accounts
+
+## BR-028 – No employee self-registration
+
+Only an authenticated Administrator using `CanManageEmployees` may create an
+employee account. Employee accounts are never created from a public flow.
+
+## BR-029 – Temporary-password lifecycle
+
+Creation and password reset generate a cryptographically random password that
+satisfies the employee password policy. Only its hash is stored. The raw value
+is returned once, `MustChangePassword` is set, and ordinary staff functions stay
+blocked until the employee changes it.
+
+## BR-030 – Multiple roles
+
+An employee has one or more existing system roles. Role assignment is atomic;
+duplicate, empty, unknown, or arbitrary roles are rejected.
+
+## BR-031 – Safe disable and enable
+
+Disabling sets the existing soft-disable state and never deletes the employee.
+Historical order attribution and audit records remain valid. Active refresh
+sessions are revoked and existing employee access tokens stop authorizing staff
+requests. Enabling requires a new login and never restores revoked sessions.
+
+## BR-032 – Last Administrator
+
+The final active Administrator cannot be disabled or stripped of the
+Administrator role. The backend returns `LAST_ADMINISTRATOR_PROTECTION` even
+when the frontend also warns the user.
+
+## BR-033 – Employee concurrency
+
+Identity/role updates, disable, enable, and password reset require the latest
+employee row version. A stale mutation returns `EMPLOYEE_VERSION_CONFLICT` and
+does not overwrite newer data.
+
+## BR-034 – Employee-management audit
+
+Create, identity/role updates, disable, enable, and password reset are committed
+with safe employee audit records. Password hashes, raw temporary passwords,
+refresh tokens, and access tokens are never included.

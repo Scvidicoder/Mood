@@ -9,7 +9,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageMenu)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanManageProducts)]
 [Route("api/v{version:apiVersion}/admin/media")]
 [Tags("Admin Menu - Media")]
 public sealed class AdminMediaController(IMediaService mediaService) : ControllerBase

@@ -7,6 +7,7 @@ export type StaffCapability =
   | "viewKitchen"
   | "workKitchen"
   | "completeOrders"
+  | "manageEmployees"
   | "viewAuditLog";
 
 export function hasStaffCapability(
@@ -58,6 +59,10 @@ export function hasStaffCapability(
       session.roles.includes("Cashier") ||
       session.roles.includes("Pickup")
     );
+  }
+
+  if (capability === "manageEmployees") {
+    return isAdministrator;
   }
 
   return isAdministrator;

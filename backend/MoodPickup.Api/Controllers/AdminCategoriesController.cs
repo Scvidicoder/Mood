@@ -10,7 +10,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageMenu)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanManageCategories)]
 [Route("api/v{version:apiVersion}/admin/categories")]
 [Tags("Admin Menu - Categories")]
 public sealed class AdminCategoriesController(IAdminCategoryService categoryService)

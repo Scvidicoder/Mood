@@ -122,5 +122,44 @@ Flow:
 1. Customer opens order history.
 2. Selects Repeat order.
 3. System validates products and options.
-4. Unavailable options are replaced with defaults when possible.
-5. Customer reviews updated cart.
+4. Unavailable or incompatible products/options are reported without silent
+   removal, replacement, or substitution.
+5. Customer explicitly chooses which currently available lines to add and
+   reviews the updated cart.
+
+---
+
+## UF-009 Create Employee
+
+1. Administrator opens `/staff/employees` and selects Create employee.
+2. Administrator enters a trimmed full name, safe unique username, and one or
+   more existing roles.
+3. Backend generates and hashes a secure temporary password in the same
+   transaction as the employee and audit record.
+4. UI displays the raw temporary password once with a copy action.
+5. Employee signs in and is redirected to the staff profile password-change
+   form before ordinary staff functions become available.
+
+## UF-010 Change Employee Roles
+
+1. Administrator opens employee details.
+2. Administrator changes identity fields and the multi-role selection.
+3. Backend validates the latest row version, username uniqueness, known roles,
+   and last-Administrator protection.
+4. The atomic update returns a new row version and writes identity/role audit
+   entries.
+
+## UF-011 Disable and Enable Employee
+
+1. Administrator confirms Disable.
+2. Backend preserves the employee, revokes refresh sessions, advances the
+   employee session version, and writes an audit record.
+3. Login and previously issued staff access tokens stop working.
+4. Administrator may enable the account later; the employee must sign in again.
+
+## UF-012 Reset Employee Password
+
+1. Administrator confirms Reset password with the current row version.
+2. Backend replaces the password hash, forces password change, revokes sessions,
+   invalidates existing access tokens, and writes a secret-free audit record.
+3. UI displays the new temporary password once and confirms session revocation.

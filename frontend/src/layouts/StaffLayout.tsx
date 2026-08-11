@@ -29,6 +29,7 @@ export function StaffLayout() {
   const canManageOrders = hasStaffCapability(session, "manageOrders");
   const canViewKitchen = hasStaffCapability(session, "viewKitchen");
   const canViewAudit = hasStaffCapability(session, "viewAuditLog");
+  const canManageEmployees = hasStaffCapability(session, "manageEmployees");
 
   return (
     <div className="staff-shell">
@@ -79,6 +80,11 @@ export function StaffLayout() {
           {canViewAudit ? (
             <NavLink onClick={() => setNavigationOpen(false)} to="/staff/audit-log">
               Audit log
+            </NavLink>
+          ) : null}
+          {canManageEmployees ? (
+            <NavLink onClick={() => setNavigationOpen(false)} to="/staff/employees">
+              Employees
             </NavLink>
           ) : null}
           <NavLink onClick={() => setNavigationOpen(false)} to="/staff/profile">

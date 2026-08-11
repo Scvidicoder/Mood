@@ -40,6 +40,9 @@ public sealed class HmacJwtTokenIssuer(
             new(JwtRegisteredClaimNames.UniqueName, employee.Username),
             new(JwtRegisteredClaimNames.Name, employee.FullName),
             new(
+                AuthenticationConstants.EmployeeSessionVersionClaim,
+                employee.SessionVersion.ToString()),
+            new(
                 AuthenticationConstants.MustChangePasswordClaim,
                 employee.MustChangePassword.ToString().ToLowerInvariant())
         };

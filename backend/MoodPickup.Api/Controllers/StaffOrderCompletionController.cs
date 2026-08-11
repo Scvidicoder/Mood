@@ -9,7 +9,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanIssueOrders)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanCompleteOrders)]
 [Route("api/v{version:apiVersion}/staff/orders")]
 [Tags("Staff Order Completion")]
 public sealed class StaffOrderCompletionController(IOrderWorkflowService workflowService)

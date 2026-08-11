@@ -11,5 +11,6 @@ export function fieldError(error: unknown, fieldName: string): string | undefine
 }
 
 export function isConcurrencyConflict(error: unknown): boolean {
-  return error instanceof ApiError && error.code === "MENU_VERSION_CONFLICT";
+  return error instanceof ApiError &&
+    ["MENU_VERSION_CONFLICT", "EMPLOYEE_VERSION_CONFLICT"].includes(error.code ?? "");
 }

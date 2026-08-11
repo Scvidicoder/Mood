@@ -32,6 +32,8 @@ public static class MenuExtensions
         services.AddScoped<IAdminOptionService, AdminOptionService>();
         services.AddScoped<IAdminProductConfigurationService, AdminProductConfigurationService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
+        services.AddSingleton<TemporaryPasswordGenerator>();
+        services.AddScoped<IEmployeeManagementService, EmployeeManagementService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ICustomerProfileService, CustomerProfileService>();
         services.AddScoped<IStaffOrderService, StaffOrderService>();

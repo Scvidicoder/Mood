@@ -42,5 +42,9 @@ export function StaffRoute({
     return <ForbiddenPage />;
   }
 
+  if (session.mustChangePassword && location.pathname !== "/staff/profile") {
+    return <Navigate replace to="/staff/profile" />;
+  }
+
   return children;
 }

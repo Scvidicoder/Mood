@@ -1,6 +1,6 @@
 # Database Design
 
-Version: 1.8 (Sprint 3.9 customer profile and order tracking)
+Version: 1.9 (Sprint 4.0 employee management)
 
 ## Overview
 
@@ -17,6 +17,8 @@ adds the forward-only kitchen lifecycle, pickup payment and completion
 attribution, and immutable order status history. Sprint 3.9 adds optimistic
 customer-profile updates and stable nullable option identifiers to support
 current-menu validation of historical repeat orders.
+Sprint 4.0 adds employee login timestamps, GUID concurrency, and a separate
+session-version value used to invalidate issued employee access tokens.
 
 The database is designed for one cafe. Order items and options store immutable
 menu snapshots, so historical prices and names do not depend on later menu
@@ -52,9 +54,18 @@ edits.
 - `FullName` (required, maximum 100)
 - `IsAdmin`
 - `MustChangePassword`
-- `IsDeleted`
+- `IsDeleted` (`false` = Active, `true` = Disabled; never physically deleted)
+- `LastLoginAt` (nullable)
 - `CreatedAt`
 - `UpdatedAt`
+- `RowVersion` (`uuid` concurrency token)
+- `SessionVersion` (`uuid`; advanced by disable and password reset)
+
+Usernames are trimmed, stored in lowercase, limited to letters, digits,
+periods, underscores, and hyphens, and unique across all employee records. The
+stricter all-record uniqueness prevents a disabled identity from being silently
+reused before a later enable. `PasswordHash` is never projected by employee
+management APIs.
 
 ### `Roles` and `EmployeeRoles`
 
@@ -500,7 +511,7 @@ so a stale writer receives `DbUpdateConcurrencyException`. This is
 PostgreSQL-safe and can later map to the documented API `rowVersion` string
 without using SQL Server `rowversion` or exposing PostgreSQL `xmin`.
 
-Concurrency is enabled for `Customer`, `Category`, `Product`, `OptionGroup`,
+Concurrency is enabled for `Customer`, `Employee`, `Category`, `Product`, `OptionGroup`,
 `OptionValue`, `ProductOptionGroup`, `ProductOptionValue`, and `Order`. Checkout also uses a
 serializable PostgreSQL transaction to reject a conflicting menu change without
 leaving partial order data.
@@ -537,6 +548,7 @@ run in Testing or Production.
 - `20260811061908_Sprint37StaffOrderManagement`
 - `20260811073656_Sprint38KitchenWorkflow`
 - `20260811084037_Sprint39CustomerProfileOrderTracking`
+- `20260811092805_Sprint40EmployeeManagement`
 
 The Sprint 3.8 migration works on a clean database and over Sprint 3.7. During
 upgrade it marks existing `Online` orders paid and backfills one baseline
@@ -547,3 +559,9 @@ assigns a nonzero random row version to every existing customer and backfills
 historical option-group/value identifiers only when the product/name match is
 unambiguous. Nullable unmatched identifiers preserve history and cause repeat
 validation to report uncertainty rather than guess.
+
+The Sprint 4.0 migration works on a clean database and over Sprint 3.9. It
+preserves every employee and role assignment, adds nullable `LastLoginAt`, and
+backfills independent nonzero random `RowVersion` and `SessionVersion` values
+for all existing employees. The existing seeded Administrator and historical
+employee/audit/order foreign keys remain unchanged.

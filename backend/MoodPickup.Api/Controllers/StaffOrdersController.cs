@@ -10,13 +10,14 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageOrders)]
+[Authorize(Policy = AuthenticationConstants.Policies.Employee)]
 [Route("api/v{version:apiVersion}/staff/orders")]
 [Tags("Staff Orders")]
 public sealed class StaffOrdersController(IStaffOrderService orderService)
     : ControllerBase
 {
     /// <summary>Returns newest-first orders with optional status filtering.</summary>
+    [Authorize(Policy = AuthenticationConstants.Policies.CanViewOrders)]
     [HttpGet]
     [ProducesResponseType<PagedResponse<StaffOrderSummaryDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -29,6 +30,7 @@ public sealed class StaffOrdersController(IStaffOrderService orderService)
     }
 
     /// <summary>Returns complete order details for authorized order staff.</summary>
+    [Authorize(Policy = AuthenticationConstants.Policies.CanViewOrders)]
     [HttpGet("{id:guid}")]
     [ProducesResponseType<StaffOrderDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -42,6 +44,7 @@ public sealed class StaffOrdersController(IStaffOrderService orderService)
     }
 
     /// <summary>Confirms a pending order and assigns its estimated ready time.</summary>
+    [Authorize(Policy = AuthenticationConstants.Policies.CanConfirmOrders)]
     [HttpPost("{id:guid}/confirm")]
     [ProducesResponseType<StaffOrderDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -58,6 +61,7 @@ public sealed class StaffOrdersController(IStaffOrderService orderService)
     }
 
     /// <summary>Rejects a pending order with a customer-visible reason.</summary>
+    [Authorize(Policy = AuthenticationConstants.Policies.CanRejectOrders)]
     [HttpPost("{id:guid}/reject")]
     [ProducesResponseType<StaffOrderDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -74,6 +78,7 @@ public sealed class StaffOrdersController(IStaffOrderService orderService)
     }
 
     /// <summary>Changes the estimated ready time of a confirmed order.</summary>
+    [Authorize(Policy = AuthenticationConstants.Policies.CanConfirmOrders)]
     [HttpPut("{id:guid}/estimated-ready-time")]
     [ProducesResponseType<StaffOrderDetailDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

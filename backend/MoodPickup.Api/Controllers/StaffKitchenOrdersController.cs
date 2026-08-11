@@ -30,7 +30,7 @@ public sealed class StaffKitchenOrdersController(IOrderWorkflowService workflowS
     }
 
     /// <summary>Moves a confirmed order into preparation.</summary>
-    [Authorize(Policy = AuthenticationConstants.Policies.CanWorkKitchen)]
+    [Authorize(Policy = AuthenticationConstants.Policies.CanStartPreparing)]
     [HttpPost("{id:guid}/start")]
     [ProducesResponseType<KitchenOrderDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -46,7 +46,7 @@ public sealed class StaffKitchenOrdersController(IOrderWorkflowService workflowS
     }
 
     /// <summary>Moves a preparing order to ready for pickup.</summary>
-    [Authorize(Policy = AuthenticationConstants.Policies.CanWorkKitchen)]
+    [Authorize(Policy = AuthenticationConstants.Policies.CanMarkReady)]
     [HttpPost("{id:guid}/ready")]
     [ProducesResponseType<KitchenOrderDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

@@ -10,7 +10,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageMenu)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanManageOptions)]
 [Route("api/v{version:apiVersion}/admin/option-groups")]
 [Tags("Admin Menu - Option Groups")]
 public sealed class AdminOptionGroupsController(IAdminOptionService optionService)

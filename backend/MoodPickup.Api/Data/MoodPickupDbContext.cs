@@ -21,6 +21,8 @@ public sealed class MoodPickupDbContext(DbContextOptions<MoodPickupDbContext> op
 
     public DbSet<EmployeeRole> EmployeeRoles => Set<EmployeeRole>();
 
+    public DbSet<EmployeePermission> EmployeePermissions => Set<EmployeePermission>();
+
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<Product> Products => Set<Product>();

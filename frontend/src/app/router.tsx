@@ -30,6 +30,9 @@ import { KitchenDashboardPage } from "../pages/staff/kitchen/KitchenDashboardPag
 import { StaffProfilePage } from "../pages/staff/StaffProfilePage";
 import { StaffOrderDetailsPage } from "../pages/staff/orders/StaffOrderDetailsPage";
 import { StaffOrdersPage } from "../pages/staff/orders/StaffOrdersPage";
+import { CreateEmployeePage } from "../pages/staff/employees/CreateEmployeePage";
+import { EmployeeDetailPage } from "../pages/staff/employees/EmployeeDetailPage";
+import { EmployeeListPage } from "../pages/staff/employees/EmployeeListPage";
 import { VerifyCodePage } from "../pages/VerifyCodePage";
 
 export const router = createBrowserRouter([
@@ -244,6 +247,30 @@ export const router = createBrowserRouter([
         element: (
           <StaffRoute capability="manageMenu">
             <OptionGroupFormPage />
+          </StaffRoute>
+        ),
+      },
+      {
+        path: "employees",
+        element: (
+          <StaffRoute capability="manageEmployees">
+            <EmployeeListPage />
+          </StaffRoute>
+        ),
+      },
+      {
+        path: "employees/new",
+        element: (
+          <StaffRoute capability="manageEmployees">
+            <CreateEmployeePage />
+          </StaffRoute>
+        ),
+      },
+      {
+        path: "employees/:id",
+        element: (
+          <StaffRoute capability="manageEmployees">
+            <EmployeeDetailPage />
           </StaffRoute>
         ),
       },

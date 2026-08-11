@@ -13,6 +13,8 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         builder.Property(employee => employee.Username).HasMaxLength(64).IsRequired();
         builder.Property(employee => employee.PasswordHash).HasMaxLength(512).IsRequired();
         builder.Property(employee => employee.FullName).HasMaxLength(100).IsRequired();
+        builder.Property(employee => employee.RowVersion).IsConcurrencyToken();
         builder.HasIndex(employee => employee.Username).IsUnique();
+        builder.HasIndex(employee => employee.IsDeleted);
     }
 }

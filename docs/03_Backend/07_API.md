@@ -1,7 +1,7 @@
 
 # REST API Specification
 
-Version: 1.8 (Sprint 3.9)
+Version: 1.9 (Sprint 4.0)
 
 Version 1 base URL:
 
@@ -15,7 +15,7 @@ Content type:
 application/json
 ```
 
-Implemented through Sprint 3.9: authentication and session endpoints, system
+Implemented through Sprint 4.0: authentication and session endpoints, system
 and health endpoints, the public menu, interactive customer configuration and
 local cart UI, authenticated customer checkout/orders, authorized menu
 administration, employee menu/order audit reads, secure image upload,
@@ -23,8 +23,11 @@ metadata-mediated public media delivery, staff order confirmation/rejection,
 the active kitchen dashboard/API, ETA/preparation/ready transitions, pickup
 payment, completion, immutable status history, customer/staff SignalR order
 updates, customer profile management, searchable/filterable owned history,
-rich tracking details, and repeat-order validation. Online payment gateways,
-refunds, and persisted notification inboxes remain planned.
+rich tracking details, repeat-order validation, and Administrator-only employee
+listing/details/creation/multi-role update/disable/enable/password reset/action
+history with optimistic concurrency and live account-state authorization.
+Online payment gateways, refunds, and persisted notification inboxes remain
+planned.
 
 Authentication:
 
@@ -1306,13 +1309,85 @@ the admin can continue editing while seeing exact issues.
 
 # 17. Admin Employees
 
-Planned, not implemented in Sprint 3.2.
-
 Required role:
 
-- `Administrator`
+- `CanManageEmployees` (Administrator only)
+
+Anonymous requests return `401`; customer and non-Administrator employee
+tokens return `403`. DTOs never expose password hashes, refresh tokens, JWTs,
+or session-version internals.
 
 ## GET `/admin/employees`
+
+Query parameters: `search`, `role`, `status` (`All`, `Active`, `Disabled`),
+`page`, and `pageSize`. Search matches full name and normalized username. The
+response is a standard server-paged envelope containing identity, roles,
+active state, `mustChangePassword`, timestamps, nullable `lastLoginAt`, and
+`rowVersion`.
+
+## GET `/admin/employees/{id}`
+
+Returns the same safe identity/account fields for one employee or
+`404 EMPLOYEE_NOT_FOUND`.
+
+## GET `/admin/employees/{id}/permissions`
+
+Returns every available system permission with its display group, role-based
+default, nullable employee override, and effective result:
+
+```json
+{
+  "employeeId": "uuid",
+  "permissions": [
+    {
+      "permission": "RejectOrders",
+      "displayName": "Reject Orders",
+      "group": "Orders",
+      "roleAllowed": true,
+      "override": false,
+      "isAllowed": false
+    }
+  ]
+}
+```
+
+When no override exists, `override` is omitted and `isAllowed` equals
+`roleAllowed`. Available identifiers are `ViewOrders`, `ConfirmOrders`,
+`RejectOrders`, `CompleteOrders`, `ViewKitchen`, `StartPreparing`, `MarkReady`,
+`ManageCategories`, `ManageProducts`, `ManageOptions`, `ManageEmployees`,
+`ViewReports`, and `ManageSettings`.
+
+## PUT `/admin/employees/{id}/permissions`
+
+Replaces the complete override set without changing the employee's roles:
+
+```json
+{
+  "overrides": [
+    {
+      "permission": "RejectOrders",
+      "isAllowed": false
+    },
+    {
+      "permission": "ViewReports",
+      "isAllowed": true
+    }
+  ]
+}
+```
+
+An override takes precedence over the existing role result on the next staff
+API request: `false` denies a role-granted permission and `true` grants a
+permission absent from the employee's roles. Sending `{ "overrides": [] }`
+implements **Reset to Role Defaults** by removing all overrides. The mutation
+records `EmployeePermissionsUpdated` through the existing employee audit log.
+There is no version history or merge behavior. Unknown or duplicate permission
+identifiers return `400` validation errors.
+
+## GET `/admin/roles`
+
+Returns authorized read-only `{ name, displayName }` options for the existing
+system roles. Role definition creation/deletion is not exposed.
 
 ## POST `/admin/employees`
 
@@ -1322,7 +1397,6 @@ Required role:
 {
   "fullName": "Alex",
   "username": "kitchen1",
-  "temporaryPassword": "password",
   "roles": [
     "Kitchen",
     "Pickup"
@@ -1330,7 +1404,16 @@ Required role:
 }
 ```
 
+The backend normalizes the username, validates all roles, generates and hashes
+an 18-character cryptographically random policy-compliant password, sets
+`MustChangePassword`, and commits employee/roles/audit atomically. `201`
+returns `{ employee, temporaryPassword }`; the raw password is returned by no
+later endpoint.
+
 ## PUT `/admin/employees/{id}`
+
+Updates trimmed `fullName`, normalized `username`, and the complete atomic role
+set. The request includes `rowVersion`; password state is not changed here.
 
 ## POST `/admin/employees/{id}/reset-password`
 
@@ -1338,13 +1421,46 @@ Required role:
 
 ```json
 {
-  "temporaryPassword": "generated-password"
+  "temporaryPassword": "generated-password",
+  "mustChangePassword": true,
+  "rowVersion": "uuid",
+  "revokedSessionCount": 2
 }
 ```
 
-## DELETE `/admin/employees/{id}`
+The response is shown once. Reset replaces the hash, advances employee
+`SessionVersion`, revokes all employee refresh tokens, and audits only safe
+flags/counts.
+
+## POST `/admin/employees/{id}/disable`
+
+Accepts `{ "rowVersion": "uuid" }`. It soft-disables the account, advances
+`SessionVersion`, revokes employee refresh sessions, and immediately prevents
+existing access tokens from authorizing staff APIs. Historical references are
+preserved.
+
+## POST `/admin/employees/{id}/enable`
+
+Accepts `{ "rowVersion": "uuid" }`. It restores login access but does not
+change `SessionVersion`, so pre-disable access tokens and revoked refresh
+sessions remain invalid. The employee signs in again.
 
 ## GET `/admin/employees/{id}/actions`
+
+Supports `page`, `pageSize`, `actionType`, `entityType`, `dateFrom`, and
+`dateTo`. Results include activity performed by the employee plus
+employee-management actions whose target is that employee. List data contains
+no old/new JSON or credentials.
+
+Mutation errors include:
+
+- `400 INVALID_EMPLOYEE_ROLE` or validation errors;
+- `404 EMPLOYEE_NOT_FOUND`;
+- `409 EMPLOYEE_USERNAME_CONFLICT`;
+- `409 EMPLOYEE_ALREADY_DISABLED` / `EMPLOYEE_ALREADY_ENABLED`;
+- `409 EMPLOYEE_VERSION_CONFLICT` with current resource identity/version when
+  pre-detected;
+- `409 LAST_ADMINISTRATOR_PROTECTION`.
 
 ---
 

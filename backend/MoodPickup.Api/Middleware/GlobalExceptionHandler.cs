@@ -15,6 +15,17 @@ public sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException &&
+            httpContext.RequestAborted.IsCancellationRequested)
+        {
+            if (!httpContext.Response.HasStarted)
+            {
+                httpContext.Response.StatusCode = 499;
+            }
+
+            return true;
+        }
+
         if (exception is ApiProblemException apiProblem)
         {
             await WriteApiProblemAsync(
@@ -170,6 +181,12 @@ public sealed class GlobalExceptionHandler(
                     "business_rule_violation",
                     "The option value is already assigned",
                     "PRODUCT_OPTION_VALUE_ALREADY_ASSIGNED"),
+            "IX_Employees_Username" =>
+                new ApiProblemException(
+                    StatusCodes.Status409Conflict,
+                    "business_rule_violation",
+                    "An employee with this username already exists",
+                    "EMPLOYEE_USERNAME_CONFLICT"),
             _ => null!
         };
 

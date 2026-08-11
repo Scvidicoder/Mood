@@ -25,6 +25,9 @@ builder.Host.UseSerilog((context, services, loggerConfiguration) =>
     loggerConfiguration
         .MinimumLevel.Information()
         .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override(
+            "Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware",
+            LogEventLevel.Fatal)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Application", "MoodPickup.Api")
@@ -166,8 +169,6 @@ await app.ApplyDevelopmentMigrationsAsync();
 await app.SeedAuthenticationDataAsync();
 await app.SeedDevelopmentMenuAsync();
 
-app.UseExceptionHandler();
-app.UseStatusCodePages(StatusCodeProblemDetails.WriteAsync);
 app.UseMiddleware<TraceIdentifierMiddleware>();
 app.UseSerilogRequestLogging(options =>
 {
@@ -177,6 +178,8 @@ app.UseSerilogRequestLogging(options =>
         diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
     };
 });
+app.UseExceptionHandler();
+app.UseStatusCodePages(StatusCodeProblemDetails.WriteAsync);
 
 app.UseConfiguredSwagger();
 app.UseCors(CorsExtensions.PolicyName);

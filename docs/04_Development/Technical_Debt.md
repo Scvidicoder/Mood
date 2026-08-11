@@ -43,6 +43,28 @@ corpus. Revisit before production employee onboarding. A future implementation
 may use an offline breached-password dataset or privacy-preserving lookup
 service after its operational and privacy requirements are documented.
 
+## Employee account hardening and delivery
+
+Sprint 4.0 provides secure generated temporary passwords, forced first change,
+soft disable/enable, multi-role management, current database authorization
+state, refresh revocation, access-token session versions, last-Administrator
+protection, action history, audit, and concurrency. Deliberately deferred
+improvements are:
+
+- administrator and other high-privilege employee 2FA;
+- password expiration/history policy based on an approved security policy;
+- self-service recovery with verified delivery and abuse controls;
+- invitation/temporary-password delivery instead of manual secure transfer;
+- per-device/session listing and explicit Administrator “sign out all” UI;
+- finer-grained permission definitions if concrete business needs outgrow the
+  current stable role set.
+
+The SignalR hub checks current employee state and session version on connect,
+but the application does not maintain a process-wide connection registry to
+force-close an already connected disabled employee. HTTP privileges fail
+immediately and reconnect fails. Add active disconnection only if measured
+operational need justifies distributed connection tracking.
+
 ## Telegram relinking and delivery guarantees
 
 Real Telegram contact linking and OTP delivery are implemented. Development

@@ -125,6 +125,18 @@ public sealed class RefreshTokenService(
         AuthenticationRequestMetadata metadata,
         CancellationToken cancellationToken)
     {
+        await MarkEmployeeSessionsRevokedAsync(
+            employeeId,
+            metadata,
+            cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> MarkEmployeeSessionsRevokedAsync(
+        Guid employeeId,
+        AuthenticationRequestMetadata metadata,
+        CancellationToken cancellationToken)
+    {
         var now = timeProvider.GetUtcNow();
         var ipHash = hashing.HashMetadata(metadata.IpAddress);
         var activeTokens = await dbContext.RefreshTokens
@@ -137,7 +149,7 @@ public sealed class RefreshTokenService(
             token.RevokedByIpHash = ipHash;
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        return activeTokens.Count;
     }
 
     private async Task<IssuedRefreshToken> IssueInternalAsync(

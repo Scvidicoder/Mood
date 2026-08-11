@@ -207,6 +207,7 @@ Current migrations:
 - `20260811061908_Sprint37StaffOrderManagement`
 - `20260811073656_Sprint38KitchenWorkflow`
 - `20260811084037_Sprint39CustomerProfileOrderTracking`
+- `20260811092805_Sprint40EmployeeManagement`
 
 Production migrations are an explicit release step.
 
@@ -227,8 +228,8 @@ intentionally does nothing.
 
 ### PostgreSQL API integration tests
 
-Critical menu, media, checkout, staff/kitchen workflow, and Sprint 3.9
-customer-profile/order API tests use a
+Critical menu, media, checkout, staff/kitchen workflow, Sprint 3.9
+customer-profile/order, and Sprint 4.0 employee-management API tests use a
 disposable real PostgreSQL database and an isolated temporary media directory.
 Start one example instance:
 
@@ -262,6 +263,7 @@ run. Do not point this variable at a database containing data to preserve.
 | Customer login | <http://localhost:5173/login> |
 | Staff login | <http://localhost:5173/staff/login> |
 | Staff orders (Administrator, Cashier, Manager) | <http://localhost:5173/staff/orders> |
+| Employees (Administrator) | <http://localhost:5173/staff/employees> |
 | Staff menu | <http://localhost:5173/staff/menu> |
 | Categories | <http://localhost:5173/staff/menu/categories> |
 | Products | <http://localhost:5173/staff/menu/products> |
@@ -500,6 +502,44 @@ tokens remain cookie-only and are unrelated to menu concurrency.
 10. Repeat profile, history, detail, and repeat-dialog flows at desktop, tablet,
     and 390x844 mobile sizes. Confirm keyboard access, visible focus, readable
     timeline/cards, and no page-level horizontal overflow or console errors.
+
+### Manual Sprint 4.0 verification
+
+Use disposable employee names/usernames. Do not delete or reset shared employee
+records directly in PostgreSQL.
+
+1. Sign in as the seeded Administrator and open `/staff/employees`. Verify name
+   and username search, exact role filter, All/Active/Disabled filters,
+   pagination, created/last-login dates, password-change state, and responsive
+   labeled cards at 390x844 with no horizontal overflow.
+2. Confirm Employees is absent for Kitchen, Cashier, MenuManager, Pickup, and
+   Manager sessions. Direct API/UI access must return forbidden; anonymous API
+   access must return `401`.
+3. Create one employee with Kitchen + Pickup. Copy the generated password and
+   verify it disappears after navigation and is absent from URL, storage,
+   subsequent GET responses, database plaintext, logs, and audit JSON.
+4. Sign in with the temporary password. Verify only the staff profile/change
+   password flow is available. Change the password, refresh the session, and
+   confirm ordinary permitted staff access; the temporary password must fail.
+5. Edit full name, username, and roles. Submit an old row version through
+   Swagger and verify `409 EMPLOYEE_VERSION_CONFLICT` without overwriting the
+   newer state. Verify duplicate username/role and unknown-role errors.
+6. Disable the employee while its staff page/token is active. Verify refresh
+   sessions are revoked, login fails generically, the existing access token is
+   forbidden immediately, and future SignalR reconnect is rejected.
+7. Enable the employee. Verify the old token/session remains invalid, then sign
+   in again successfully. Reset the password, confirm the revoked-session count
+   and one-time password UI, and verify the prior password/token fails.
+8. Review employee action history with action/entity/date filters and
+   pagination. Confirm creation, updates/roles, disable, enable, and reset are
+   audited with actor/correlation data and no password/token/hash content.
+9. Attempt to disable or remove Administrator from the final active
+   Administrator and verify `LAST_ADMINISTRATOR_PROTECTION`. Add a second active
+   Administrator and confirm the same operation is then permitted.
+10. Apply `Sprint40EmployeeManagement` to a clean database and to a Sprint 3.9
+    database with existing employees/roles/audit/order attribution. Verify all
+    rows remain, employee row/session versions are nonzero, the seed remains
+    idempotent, and `has-pending-model-changes` reports none.
 
 ## Troubleshooting
 

@@ -69,8 +69,9 @@ public static class AuthenticationExtensions
                 };
             });
 
-        services.AddSingleton<IAuthorizationHandler, AccountTypeAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationHandler, EmployeePermissionAuthorizationHandler>();
+        services.AddScoped<EmployeeAccessStateService>();
+        services.AddScoped<IAuthorizationHandler, AccountTypeAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, EmployeePermissionAuthorizationHandler>();
         services.AddAuthorization(options =>
         {
             options.AddPolicy(
@@ -89,14 +90,17 @@ public static class AuthenticationExtensions
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanReceiveOrders,
+                EmployeePermissionCatalog.ConfirmOrders,
                 AuthenticationConstants.Roles.OrderReception);
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanWorkKitchen,
+                EmployeePermissionCatalog.StartPreparing,
                 AuthenticationConstants.Roles.Kitchen);
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanViewKitchen,
+                EmployeePermissionCatalog.ViewKitchen,
                 AuthenticationConstants.Roles.Kitchen,
                 AuthenticationConstants.Roles.Cashier,
                 AuthenticationConstants.Roles.Manager,
@@ -104,20 +108,81 @@ public static class AuthenticationExtensions
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanIssueOrders,
+                EmployeePermissionCatalog.CompleteOrders,
                 AuthenticationConstants.Roles.Pickup,
                 AuthenticationConstants.Roles.Cashier);
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanManageMenu,
+                EmployeePermissionCatalog.ManageProducts,
                 AuthenticationConstants.Roles.MenuManager);
-            AddEmployeePolicy(options, AuthenticationConstants.Policies.CanManageEmployees);
-            AddEmployeePolicy(options, AuthenticationConstants.Policies.CanManageCafeSettings);
-            AddEmployeePolicy(options, AuthenticationConstants.Policies.CanViewAuditLog);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageEmployees,
+                EmployeePermissionCatalog.ManageEmployees);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageCafeSettings,
+                EmployeePermissionCatalog.ManageSettings);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanViewAuditLog,
+                EmployeePermissionCatalog.ViewReports);
             AddEmployeePolicy(
                 options,
                 AuthenticationConstants.Policies.CanManageOrders,
+                EmployeePermissionCatalog.ViewOrders,
                 AuthenticationConstants.Roles.Cashier,
                 AuthenticationConstants.Roles.Manager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanViewOrders,
+                EmployeePermissionCatalog.ViewOrders,
+                AuthenticationConstants.Roles.Cashier,
+                AuthenticationConstants.Roles.Manager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanConfirmOrders,
+                EmployeePermissionCatalog.ConfirmOrders,
+                AuthenticationConstants.Roles.Cashier,
+                AuthenticationConstants.Roles.Manager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanRejectOrders,
+                EmployeePermissionCatalog.RejectOrders,
+                AuthenticationConstants.Roles.Cashier,
+                AuthenticationConstants.Roles.Manager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanCompleteOrders,
+                EmployeePermissionCatalog.CompleteOrders,
+                AuthenticationConstants.Roles.Pickup,
+                AuthenticationConstants.Roles.Cashier);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanStartPreparing,
+                EmployeePermissionCatalog.StartPreparing,
+                AuthenticationConstants.Roles.Kitchen);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanMarkReady,
+                EmployeePermissionCatalog.MarkReady,
+                AuthenticationConstants.Roles.Kitchen);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageCategories,
+                EmployeePermissionCatalog.ManageCategories,
+                AuthenticationConstants.Roles.MenuManager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageProducts,
+                EmployeePermissionCatalog.ManageProducts,
+                AuthenticationConstants.Roles.MenuManager);
+            AddEmployeePolicy(
+                options,
+                AuthenticationConstants.Policies.CanManageOptions,
+                EmployeePermissionCatalog.ManageOptions,
+                AuthenticationConstants.Roles.MenuManager);
         });
 
         services.AddScoped<AuthenticationHashing>();
@@ -167,12 +232,13 @@ public static class AuthenticationExtensions
     private static void AddEmployeePolicy(
         AuthorizationOptions options,
         string policyName,
+        string permission,
         params string[] roles)
     {
         options.AddPolicy(
             policyName,
             policy => policy
                 .RequireAuthenticatedUser()
-                .AddRequirements(new EmployeePermissionRequirement(roles)));
+                .AddRequirements(new EmployeePermissionRequirement(permission, roles)));
     }
 }

@@ -9,7 +9,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageMenu)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanManageOptions)]
 [Route("api/v{version:apiVersion}/admin/option-values")]
 [Tags("Admin Menu - Option Values")]
 public sealed class AdminOptionValuesController(IAdminOptionService optionService)

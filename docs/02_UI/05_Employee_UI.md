@@ -78,7 +78,10 @@ States:
 - Temporary password
 - Password change required
 
-After login, the employee is redirected to Dashboard.
+After login, an employee with `MustChangePassword = true` is redirected to the
+staff profile password-change form. Other staff pages remain unavailable until
+the change succeeds and the in-memory access token is refreshed. Employees
+without that flag are redirected to Dashboard.
 
 ## 6. Dashboard
 
@@ -566,3 +569,26 @@ Avoid:
 - Large data tables for active workflows
 - Hidden critical actions
 - Excessive confirmation dialogs
+
+## 21. Administrator Employee Management
+
+`/staff/employees` is available only to Administrator. The sidebar item is not
+rendered for other roles and the backend `CanManageEmployees` policy remains
+authoritative.
+
+The responsive list supports name/username search, exact role filtering,
+Active/Disabled filtering, server pagination, status and password-change
+indicators, created/last-login dates, create, details/edit, disable/enable, and
+password reset. Desktop uses a table; narrow screens render the same semantic
+rows as labeled cards without horizontal page overflow.
+
+`/staff/employees/new` uses a multi-role checkbox group populated by
+`GET /admin/roles`. After creation, the generated temporary password is shown
+prominently with a copy button and one-time warning. It is kept only in local
+component state, never in a URL, local/session storage, Redux, or query data.
+
+`/staff/employees/{id}` combines editable identity/roles, account state,
+disable/enable, password reset, and paginated/filterable action history. Reset
+shows the new password once and reports how many active refresh sessions were
+revoked. Stale writes show the shared conflict notice; last-Administrator
+errors display “At least one active Administrator account must remain.”

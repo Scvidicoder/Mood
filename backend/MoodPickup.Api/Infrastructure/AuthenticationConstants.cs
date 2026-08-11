@@ -4,6 +4,7 @@ public static class AuthenticationConstants
 {
     public const string AccountTypeClaim = "account_type";
     public const string MustChangePasswordClaim = "must_change_password";
+    public const string EmployeeSessionVersionClaim = "employee_session_version";
     public const string RegistrationTokenUse = "registration";
     public const string TokenUseClaim = "token_use";
     public const string ChallengeIdClaim = "challenge_id";
@@ -49,5 +50,14 @@ public static class AuthenticationConstants
         public const string CanManageCafeSettings = "CanManageCafeSettings";
         public const string CanViewAuditLog = "CanViewAuditLog";
         public const string CanManageOrders = "CanManageOrders";
+        public const string CanViewOrders = "CanViewOrders";
+        public const string CanConfirmOrders = "CanConfirmOrders";
+        public const string CanRejectOrders = "CanRejectOrders";
+        public const string CanCompleteOrders = "CanCompleteOrders";
+        public const string CanStartPreparing = "CanStartPreparing";
+        public const string CanMarkReady = "CanMarkReady";
+        public const string CanManageCategories = "CanManageCategories";
+        public const string CanManageProducts = "CanManageProducts";
+        public const string CanManageOptions = "CanManageOptions";
     }
 }

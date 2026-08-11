@@ -1,6 +1,6 @@
 # Architecture
 
-Version: 1.8 (Sprint 3.9 customer profile and order tracking)
+Version: 1.9 (Sprint 4.0 employee management)
 
 ## Goal
 
@@ -13,6 +13,9 @@ it does not add a server cart or new abstraction layers.
 Sprint 3.9 extends the same customer/order services with a profile cabinet,
 owned history projections, and repeat-order validation; it does not introduce
 a server cart, account aggregate, or new architectural layer.
+Sprint 4.0 extends the same MVC application with focused employee-management
+controllers/services, DTOs, validators, and one migration; it does not add
+repositories, MediatR, a Unit of Work, or a separate identity project.
 Real Telegram authentication remains inside the same API and adds only its
 focused authentication migration.
 
@@ -204,6 +207,30 @@ validated JWT subject claim. `IEmployeeAuditService` adds a compact
 assignment creation use explicit transactions. An audit failure fails the
 mutation.
 
+## Employee management and live authorization state
+
+`AdminEmployeesController` and `AdminRolesController` remain thin MVC
+controllers behind `CanManageEmployees`. `EmployeeManagementService` owns
+search/pagination, username normalization and uniqueness, role resolution,
+last-Administrator protection, GUID row-version checks, temporary-password
+generation/hashing, soft disable/enable, refresh-session revocation, and safe
+audit snapshots. Mutations use explicit serializable transactions and one
+business/audit `SaveChangesAsync` commit.
+
+`IsDeleted` is reused as Disabled; no physical-delete path exists. Employee
+`RowVersion` follows the existing application-managed GUID concurrency design.
+A separate `SessionVersion` changes only for disable/password reset and is
+embedded in employee access tokens. Scoped employee authorization handlers
+compare current PostgreSQL active state, roles, password-change flag, and
+session version with the token. This prevents stale employee tokens from
+remaining privileged or becoming valid after re-enable without adding database
+work to public/customer requests.
+
+`TemporaryPasswordGenerator` uses `RandomNumberGenerator`, guarantees every
+required character class, and shuffles the 18-character result. Only the hash
+enters the entity; audit data includes identity/roles/status flags and
+revoked-session counts, never a password or token.
+
 ## Frontend
 
 The React/Vite frontend uses a nested `/staff` layout with policy-equivalent
@@ -211,10 +238,13 @@ capability mapping from employee role claims. TanStack Query owns categories,
 products, global options, product configuration, media mutations, and audit
 server state. Redux is not used to duplicate those resources.
 
-Focused modules under `src/api/menu`, `src/api/media.ts`, and
-`src/api/audit.ts` preserve the shared in-memory access-token/refresh-cookie
-client. Pages expose backend validation, accepted draft orderability issues,
-and GUID concurrency conflicts rather than reimplementing menu rules.
+Focused modules under `src/api/menu`, `src/api/media.ts`, `src/api/audit.ts`,
+and `src/api/employees.ts` preserve the shared in-memory
+access-token/refresh-cookie client. Pages expose backend validation, accepted
+draft orderability issues, and GUID concurrency conflicts rather than
+reimplementing business rules. Employee create/reset secrets use direct request
+state rather than TanStack Query server caches and disappear on dismissal or
+navigation.
 
 The public route uses `src/api/menu/publicMenu.ts` and separate public
 TypeScript contract shapes. TanStack Query caches category, filtered product,
@@ -396,6 +426,12 @@ immutable caching. Physical paths are never returned.
 - Sprint 3.9 adds profile validation/concurrency/count tests, PostgreSQL
   ownership/filter/search/repeat tests, and React profile, navigation, history,
   detail, timeline, and reviewed repeat-cart coverage.
+- Sprint 4.0 adds real-PostgreSQL Administrator authorization, generated
+  password/first-login, multi-role update, last-Administrator, concurrency,
+  disable/enable, session/access-token invalidation, reset, secret-free audit,
+  and action-history coverage. React tests cover protected navigation,
+  responsive list/filter/pagination, multi-role create, one-time copy, edit,
+  conflicts, reset/session feedback, and last-Administrator messaging.
 - Docker smoke validation covers the complete composed stack.
 
 No EF Core InMemory tests are used to claim relational menu behavior.

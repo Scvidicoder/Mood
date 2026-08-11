@@ -63,6 +63,7 @@ describe("staff authorization and navigation", () => {
 
     expect(await screen.findByRole("link", { name: "Menu overview" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Audit log" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Employees" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Orders" })).not.toBeInTheDocument();
     expect(screen.getByText("Mina Manager")).toBeVisible();
   });
@@ -87,6 +88,7 @@ describe("staff authorization and navigation", () => {
 
     expect(await screen.findByRole("link", { name: "Menu overview" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Audit log" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Employees" })).toBeVisible();
     expect(screen.getByText("Administrator")).toBeVisible();
   });
 
@@ -101,12 +103,41 @@ describe("staff authorization and navigation", () => {
     ).toBeVisible();
   });
 
+  it("forbids employee management to non-Administrators", async () => {
+    mocks.refreshAccessToken.mockResolvedValue(
+      employeeToken(["Manager"], "Manny Manager"),
+    );
+    renderStaff("/staff/menu", <h1>Employee management</h1>, "manageEmployees");
+
+    expect(
+      await screen.findByRole("heading", { name: /not available to this account/i }),
+    ).toBeVisible();
+    expect(screen.queryByText("Employee management")).not.toBeInTheDocument();
+  });
+
+  it("redirects a temporary-password employee to the password-change profile", async () => {
+    mocks.refreshAccessToken.mockResolvedValue(
+      employeeToken(["Kitchen"], "Kira Kitchen", true),
+    );
+    renderStaff("/staff/menu", <h1>Staff functions</h1>, "employee");
+
+    expect(await screen.findByRole("heading", { name: "Change password" })).toBeVisible();
+    expect(screen.queryByText("Staff functions")).not.toBeInTheDocument();
+  });
+
   it("mounts order management inside the staff workspace", () => {
     const staffRoot = router.routes.find((route) => route.path === "/staff");
     const customerRoot = router.routes.find((route) => route.path === "/");
 
     expect(staffRoot?.children?.map((route) => route.path)).toEqual(
-      expect.arrayContaining(["orders", "orders/:id", "kitchen"]),
+      expect.arrayContaining([
+        "orders",
+        "orders/:id",
+        "kitchen",
+        "employees",
+        "employees/new",
+        "employees/:id",
+      ]),
     );
     expect(
       customerRoot?.children?.filter((route) => route.path === "orders"),
@@ -142,7 +173,12 @@ function renderLayout() {
 function renderStaff(
   initialEntry: string,
   children: ReactNode,
-  capability: "employee" | "manageMenu" | "manageOrders" | "viewAuditLog",
+  capability:
+    | "employee"
+    | "manageMenu"
+    | "manageOrders"
+    | "manageEmployees"
+    | "viewAuditLog",
 ) {
   return render(
     <QueryClientProvider client={createQueryClient()}>
@@ -155,6 +191,7 @@ function renderStaff(
                 element={<StaffRoute capability={capability}>{children}</StaffRoute>}
               />
               <Route path="/staff/login" element={<h1>Staff login</h1>} />
+              <Route path="/staff/profile" element={<h1>Change password</h1>} />
             </Routes>
           </MemoryRouter>
         </ToastProvider>
@@ -163,14 +200,14 @@ function renderStaff(
   );
 }
 
-function employeeToken(roles: string[], name: string) {
+function employeeToken(roles: string[], name: string, mustChangePassword = false) {
   return token({
     sub: "employee-1",
     account_type: "employee",
     unique_name: "employee",
     name,
     roles,
-    must_change_password: "false",
+    must_change_password: String(mustChangePassword),
   });
 }
 

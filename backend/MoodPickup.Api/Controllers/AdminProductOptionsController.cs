@@ -10,7 +10,7 @@ namespace MoodPickup.Api.Controllers;
 
 [ApiController]
 [ApiVersion(1.0)]
-[Authorize(Policy = AuthenticationConstants.Policies.CanManageMenu)]
+[Authorize(Policy = AuthenticationConstants.Policies.CanManageOptions)]
 [Route("api/v{version:apiVersion}/admin/products")]
 [Tags("Admin Menu - Product Configuration")]
 public sealed class AdminProductOptionsController(

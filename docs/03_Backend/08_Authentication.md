@@ -1,7 +1,7 @@
 
 # Authentication and Authorization
 
-Version: 1.3 (Sprint 3.9 customer profile authorization)
+Version: 1.4 (Sprint 4.0 employee account management)
 
 ## 1. Purpose
 
@@ -245,9 +245,14 @@ When an administrator creates or resets an employee password:
 - Access is limited to password change and profile endpoints.
 - Employee must set a new password before using staff functions.
 
+Sprint 4.0 generates an 18-character value with cryptographic randomness and
+guaranteed uppercase, lowercase, digit, and special-character categories. It
+is hashed immediately, returned only by the create/reset response, and never
+stored, logged, audited, cached as query data, or returned by a later GET.
+
 ## 3.5 Password Reset
 
-Only an administrator may reset another employee's password.
+Only `CanManageEmployees` (Administrator) may reset an employee password.
 
 Reset action:
 
@@ -255,17 +260,16 @@ Reset action:
 - Revokes all employee refresh tokens.
 - Sets `MustChangePassword = true`.
 - Writes an audit record.
+- Advances `SessionVersion`, invalidating previously issued access tokens.
 
-## 3.6 Employee Deletion
+## 3.6 Employee disable and enable
 
-The first version does not support temporary blocking.
-
-When an employee is deleted:
-
-- The account can no longer authenticate.
-- Refresh tokens are revoked.
-- Historical audit records remain.
-- The employee record should use soft deletion where required for history.
+Sprint 4.0 uses the existing `IsDeleted` field as the persisted disabled state
+rather than introducing a redundant flag. No employee-management endpoint
+physically deletes an employee. Disable blocks login, revokes every employee
+refresh token, advances `SessionVersion`, and preserves audit/order history.
+Enable restores login but neither restores revoked refresh sessions nor changes
+the advanced session version, so an old access token cannot become valid again.
 
 ---
 
@@ -320,6 +324,7 @@ Example claims:
 - `username`
 - `roles`
 - `must_change_password`
+- `employee_session_version`
 - `jti`
 - `iat`
 - `exp`
@@ -451,6 +456,8 @@ An employee may have multiple roles.
 ### Administrator
 
 Full access to all staff and admin functions.
+Only Administrator receives `CanManageEmployees`; Manager and all operational
+roles are explicitly excluded.
 
 ### OrderReception
 
@@ -521,6 +528,12 @@ customer handoff/payment mutually restricted while preserving Administrator
 override.
 
 Policies may allow Administrator automatically.
+
+Employee policy handlers do not trust JWT role, password-change, or active
+state alone. On employee-protected requests they load current active state,
+roles, `MustChangePassword`, and `SessionVersion` from PostgreSQL. The scoped
+lookup is shared across policy requirements in one request and is never run for
+anonymous/public/customer-only requests.
 
 ## 6.5 Multiple Roles
 
@@ -625,6 +638,10 @@ Revoke sessions when:
 - Refresh-token reuse is detected
 - Administrator performs future forced logout action
 
+Sprint 4.0 implements the employee password-reset and disable cases. Access
+tokens are additionally invalidated with `SessionVersion`; role authorization
+uses current database roles. Employee enable never reverses revocation.
+
 ## 9.3 Clock Skew
 
 JWT validation may allow a small clock skew, for example:
@@ -654,7 +671,10 @@ Customers may join only:
 customer:{customerId}
 ```
 
-Employees may join role groups based on current role assignments.
+Employees may join role groups only after current database active,
+password-change, session-version, and role checks. Disabled/reset employees are
+rejected on future reconnects. Existing connections are not forcibly tracked
+or terminated; privileged HTTP actions fail immediately and a reconnect fails.
 
 Role changes should take effect on the next token refresh or forced reconnect.
 

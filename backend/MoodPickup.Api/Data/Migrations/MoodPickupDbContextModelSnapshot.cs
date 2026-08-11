@@ -135,6 +135,9 @@ namespace MoodPickup.Api.Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("MustChangePassword")
                         .HasColumnType("boolean");
 
@@ -142,6 +145,13 @@ namespace MoodPickup.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionVersion")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -152,6 +162,8 @@ namespace MoodPickup.Api.Data.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -211,6 +223,23 @@ namespace MoodPickup.Api.Data.Migrations
                     b.HasIndex("EntityType", "EntityId", "CreatedAt");
 
                     b.ToTable("EmployeeActionLogs", (string)null);
+                });
+
+            modelBuilder.Entity("MoodPickup.Api.Entities.EmployeePermission", b =>
+                {
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<bool>("IsAllowed")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("EmployeeId", "Permission");
+
+                    b.ToTable("EmployeePermissions", (string)null);
                 });
 
             modelBuilder.Entity("MoodPickup.Api.Entities.EmployeeRole", b =>
@@ -1208,6 +1237,17 @@ namespace MoodPickup.Api.Data.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("MoodPickup.Api.Entities.EmployeePermission", b =>
+                {
+                    b.HasOne("MoodPickup.Api.Entities.Employee", "Employee")
+                        .WithMany("PermissionOverrides")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("MoodPickup.Api.Entities.EmployeeRole", b =>
                 {
                     b.HasOne("MoodPickup.Api.Entities.Employee", "Employee")
@@ -1438,6 +1478,8 @@ namespace MoodPickup.Api.Data.Migrations
                     b.Navigation("ActionLogs");
 
                     b.Navigation("EmployeeRoles");
+
+                    b.Navigation("PermissionOverrides");
 
                     b.Navigation("RefreshTokens");
                 });

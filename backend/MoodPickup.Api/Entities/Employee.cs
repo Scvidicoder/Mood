@@ -1,6 +1,6 @@
 namespace MoodPickup.Api.Entities;
 
-public sealed class Employee
+public sealed class Employee : IHasTimestamps, IHasConcurrencyToken
 {
     public Guid Id { get; set; }
 
@@ -16,11 +16,19 @@ public sealed class Employee
 
     public bool IsDeleted { get; set; }
 
+    public DateTimeOffset? LastLoginAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
 
+    public Guid RowVersion { get; set; }
+
+    public Guid SessionVersion { get; set; } = Guid.NewGuid();
+
     public ICollection<EmployeeRole> EmployeeRoles { get; set; } = [];
+
+    public ICollection<EmployeePermission> PermissionOverrides { get; set; } = [];
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 

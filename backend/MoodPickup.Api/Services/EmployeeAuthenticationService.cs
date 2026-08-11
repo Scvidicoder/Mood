@@ -50,9 +50,10 @@ public sealed class EmployeeAuthenticationService(
         if (passwordResult == PasswordVerificationResult.SuccessRehashNeeded)
         {
             employee.PasswordHash = passwordHasher.HashPassword(employee, request.Password);
-            employee.UpdatedAt = timeProvider.GetUtcNow();
-            await dbContext.SaveChangesAsync(cancellationToken);
         }
+
+        employee.LastLoginAt = timeProvider.GetUtcNow();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         var roles = employee.EmployeeRoles
             .Select(employeeRole => employeeRole.Role.Name)

@@ -1,10 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MoodPickup.Api.Data;
 using MoodPickup.Api.DTOs;
+using MoodPickup.Api.Entities;
 using MoodPickup.Api.Infrastructure;
 
 namespace MoodPickup.Api.Tests;
@@ -193,10 +197,16 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
     public async Task AuthorizationPolicies_RespectRolesAndAdministratorOverride()
     {
         await factory.ResetAuthenticationStateAsync();
-        var authorization = factory.Services.GetRequiredService<IAuthorizationService>();
-        var administrator = CreateEmployeePrincipal(
-            AuthenticationConstants.Roles.Administrator);
-        var kitchen = CreateEmployeePrincipal(AuthenticationConstants.Roles.Kitchen);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var authorization = scope.ServiceProvider.GetRequiredService<IAuthorizationService>();
+        var dbContext = scope.ServiceProvider.GetRequiredService<MoodPickupDbContext>();
+        var administratorEmployee = await dbContext.Employees
+            .Include(employee => employee.EmployeeRoles)
+            .ThenInclude(employeeRole => employeeRole.Role)
+            .SingleAsync(employee => employee.Username == "admin");
+        var administrator = CreateEmployeePrincipal(administratorEmployee);
+        var kitchen = CreateEmployeePrincipal(
+            await CreateEmployeeAsync(dbContext, "kitchen", AuthenticationConstants.Roles.Kitchen));
 
         foreach (var policy in new[]
                  {
@@ -225,9 +235,12 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
             resource: null,
             AuthenticationConstants.Policies.CanManageMenu)).Succeeded);
 
-        var cashier = CreateEmployeePrincipal(AuthenticationConstants.Roles.Cashier);
-        var manager = CreateEmployeePrincipal(AuthenticationConstants.Roles.Manager);
-        var menuManager = CreateEmployeePrincipal(AuthenticationConstants.Roles.MenuManager);
+        var cashier = CreateEmployeePrincipal(
+            await CreateEmployeeAsync(dbContext, "cashier", AuthenticationConstants.Roles.Cashier));
+        var manager = CreateEmployeePrincipal(
+            await CreateEmployeeAsync(dbContext, "manager", AuthenticationConstants.Roles.Manager));
+        var menuManager = CreateEmployeePrincipal(
+            await CreateEmployeeAsync(dbContext, "menu", AuthenticationConstants.Roles.MenuManager));
         Assert.True((await authorization.AuthorizeAsync(
             cashier,
             resource: null,
@@ -340,14 +353,19 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
             : null;
     }
 
-    private static ClaimsPrincipal CreateEmployeePrincipal(params string[] roles)
+    private static ClaimsPrincipal CreateEmployeePrincipal(Employee employee)
     {
         var claims = new List<Claim>
         {
+            new(JwtRegisteredClaimNames.Sub, employee.Id.ToString()),
             new(AuthenticationConstants.AccountTypeClaim, AuthenticationConstants.AccountTypes.Employee),
-            new(AuthenticationConstants.MustChangePasswordClaim, "false")
+            new(AuthenticationConstants.MustChangePasswordClaim, "false"),
+            new(
+                AuthenticationConstants.EmployeeSessionVersionClaim,
+                employee.SessionVersion.ToString())
         };
-        claims.AddRange(roles.Select(role => new Claim("roles", role)));
+        claims.AddRange(employee.EmployeeRoles.Select(
+            employeeRole => new Claim("roles", employeeRole.Role.Name)));
 
         return new ClaimsPrincipal(
             new ClaimsIdentity(
@@ -355,6 +373,34 @@ public sealed class AuthenticationEndpointsTests(MoodPickupApiFactory factory)
                 authenticationType: "Test",
                 nameType: ClaimTypes.Name,
                 roleType: "roles"));
+    }
+
+    private static async Task<Employee> CreateEmployeeAsync(
+        MoodPickupDbContext dbContext,
+        string username,
+        params string[] roles)
+    {
+        var employee = new Employee
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            FullName = username,
+            PasswordHash = "not-used",
+            MustChangePassword = false
+        };
+        foreach (var roleName in roles)
+        {
+            var role = await dbContext.Roles.SingleAsync(role => role.Name == roleName);
+            employee.EmployeeRoles.Add(new EmployeeRole
+            {
+                Employee = employee,
+                Role = role
+            });
+        }
+
+        dbContext.Employees.Add(employee);
+        await dbContext.SaveChangesAsync();
+        return employee;
     }
 
     private sealed record TestSession(

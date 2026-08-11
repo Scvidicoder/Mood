@@ -1,8 +1,9 @@
 # Mood Pickup
 
 Mood Pickup is a pickup-ordering platform for Mood Dushanbe. The current
-foundation includes the Sprint 3.9 customer cabinet, the Sprint 3.8 kitchen workflow, and real
-Telegram customer authentication:
+foundation includes Sprint 4.0 administrator employee management, the Sprint
+3.9 customer cabinet, the Sprint 3.8 kitchen workflow, and real Telegram
+customer authentication:
 
 - ASP.NET Core 8 Web API with PostgreSQL and EF Core;
 - customer phone authentication with Telegram deep-link contact verification,
@@ -12,6 +13,16 @@ Telegram customer authentication:
 - double-submit CSRF protection for refresh and logout;
 - refresh-token family reuse detection and revocation;
 - policy-based employee authorization;
+- administrator-only employee search, details, creation, multi-role editing,
+  individual permission overrides, disable/enable, password reset, and
+  action-history APIs;
+- cryptographically generated temporary passwords shown once, forced first-login
+  password changes, transactional session revocation, and last-Administrator
+  protection;
+- server-checked employee account/session state that rejects disabled or reset
+  accounts even when an older access token has not expired;
+- per-employee allow/deny overrides that take precedence over unchanged role
+  permissions on the next authorized request, with reset to role defaults;
 - categories, products, reusable option groups and product-specific option
   assignments;
 - provider-independent product image metadata plus validated JPEG/PNG/WebP
@@ -26,7 +37,7 @@ Telegram customer authentication:
 - idempotent Development-only neutral menu seed data;
 - React/Vite customer authentication plus a permission-aware staff layout,
   menu administration, draft/orderability guidance, visible concurrency
-  handling, and administrator audit-log pages;
+  handling, administrator audit-log pages, and responsive employee management;
 - a responsive customer menu with grouped category navigation, debounced
   server search, URL-synchronized category filters, product cards, safe image
   fallbacks, and interactive product configuration;
@@ -59,8 +70,9 @@ Telegram customer authentication:
 - searchable, filterable, newest-first order history under `/profile/orders`,
   responsive snapshot details and visual timelines, plus current-menu
   repeat-order validation that never silently removes or substitutes an item;
-- backend authentication/domain/order tests, real-PostgreSQL menu/media/order
-  API tests, and network-boundary frontend Vitest coverage;
+- backend authentication/domain/order tests, real-PostgreSQL
+  menu/media/order/employee API tests, and network-boundary frontend Vitest
+  coverage;
 - Docker Compose local orchestration with persistent PostgreSQL and media
   volumes.
 
@@ -190,6 +202,7 @@ the in-memory cart usable and show a non-blocking warning.
 | Customer profile | <http://localhost:5173/profile> |
 | Staff login | <http://localhost:5173/staff/login> |
 | Staff dashboard | <http://localhost:5173/staff> |
+| Employees (Administrator) | <http://localhost:5173/staff/employees> |
 | Staff orders (Administrator, Cashier, Manager) | <http://localhost:5173/staff/orders> |
 | Kitchen dashboard (Kitchen, Cashier, Manager, Pickup, Administrator) | <http://localhost:5173/staff/kitchen> |
 | Menu administration | <http://localhost:5173/staff/menu> |
@@ -219,6 +232,7 @@ the in-memory cart usable and show a non-blocking warning.
 - `20260811061908_Sprint37StaffOrderManagement`
 - `20260811073656_Sprint38KitchenWorkflow`
 - `20260811084037_Sprint39CustomerProfileOrderTracking`
+- `20260811092805_Sprint40EmployeeManagement`
 
 ```powershell
 dotnet ef migrations list --project backend/MoodPickup.Api --startup-project backend/MoodPickup.Api -- --environment Development
