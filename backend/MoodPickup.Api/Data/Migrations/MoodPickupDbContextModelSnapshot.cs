@@ -195,7 +195,7 @@ namespace MoodPickup.Api.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("EmployeeId")
+                    b.Property<Guid?>("EmployeeId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("EntityId")
@@ -902,6 +902,176 @@ namespace MoodPickup.Api.Data.Migrations
                     b.ToTable("OrderStatusHistory", (string)null);
                 });
 
+            modelBuilder.Entity("MoodPickup.Api.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("LastVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ProviderOrderId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProviderTransactionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset?>("RefundedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId")
+                        .IsUnique();
+
+                    b.HasIndex("Provider", "ProviderOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("Provider", "ProviderTransactionId")
+                        .IsUnique()
+                        .HasFilter("\"ProviderTransactionId\" IS NOT NULL");
+
+                    b.HasIndex("Status", "UpdatedAt");
+
+                    b.ToTable("Payments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Payments_Amount_Positive", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("CK_Payments_Currency_Uppercase", "\"Currency\" = upper(\"Currency\")");
+                        });
+                });
+
+            modelBuilder.Entity("MoodPickup.Api.Entities.PaymentAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PaymentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProviderReference")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProviderStatus")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RequestSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ResponseSnapshot")
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderReference")
+                        .IsUnique();
+
+                    b.HasIndex("PaymentId", "AttemptNumber")
+                        .IsUnique();
+
+                    b.ToTable("PaymentAttempts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PaymentAttempts_AttemptNumber_Positive", "\"AttemptNumber\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MoodPickup.Api.Entities.PaymentWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProcessingResult")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Provider", "EventIdentifier")
+                        .IsUnique();
+
+                    b.HasIndex("ReceivedAt", "Id");
+
+                    b.ToTable("PaymentWebhookEvents", (string)null);
+                });
+
             modelBuilder.Entity("MoodPickup.Api.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1231,8 +1401,7 @@ namespace MoodPickup.Api.Data.Migrations
                     b.HasOne("MoodPickup.Api.Entities.Employee", "Employee")
                         .WithMany("ActionLogs")
                         .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Employee");
                 });
@@ -1381,6 +1550,28 @@ namespace MoodPickup.Api.Data.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("MoodPickup.Api.Entities.Payment", b =>
+                {
+                    b.HasOne("MoodPickup.Api.Entities.Order", "Order")
+                        .WithOne("Payment")
+                        .HasForeignKey("MoodPickup.Api.Entities.Payment", "OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("MoodPickup.Api.Entities.PaymentAttempt", b =>
+                {
+                    b.HasOne("MoodPickup.Api.Entities.Payment", "Payment")
+                        .WithMany("Attempts")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Payment");
+                });
+
             modelBuilder.Entity("MoodPickup.Api.Entities.Product", b =>
                 {
                     b.HasOne("MoodPickup.Api.Entities.Category", "Category")
@@ -1505,12 +1696,19 @@ namespace MoodPickup.Api.Data.Migrations
                 {
                     b.Navigation("Items");
 
+                    b.Navigation("Payment");
+
                     b.Navigation("StatusHistory");
                 });
 
             modelBuilder.Entity("MoodPickup.Api.Entities.OrderItem", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("MoodPickup.Api.Entities.Payment", b =>
+                {
+                    b.Navigation("Attempts");
                 });
 
             modelBuilder.Entity("MoodPickup.Api.Entities.Product", b =>

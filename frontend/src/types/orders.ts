@@ -4,7 +4,61 @@ export type PaymentMethod = "PayOnPickup" | "Online";
 
 export type PaymentMethodUsed = "Cash" | "Card";
 
+export type PaymentProvider = "Legacy" | "Development" | "Alif";
+
+export type PaymentStatus =
+  | "Pending"
+  | "Paid"
+  | "Failed"
+  | "Cancelled"
+  | "RefundRequired"
+  | "RefundPending"
+  | "Refunded"
+  | "ReconciliationRequired";
+
+export interface PaymentLaunch {
+  paymentId: string;
+  actionUrl: string;
+  method: "GET" | "POST";
+  formFields: Record<string, string>;
+}
+
+export interface CustomerPayment {
+  id: string;
+  orderId: string;
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  createdAt: string;
+  paidAt?: string;
+  refundedAt?: string;
+  failureReason?: string;
+}
+
+export interface StaffPayment {
+  provider: PaymentProvider;
+  status: PaymentStatus;
+  transactionId?: string;
+  amount: number;
+  currency: string;
+  paidAt?: string;
+  refundedAt?: string;
+  failureReason?: string;
+}
+
 export type PickupMode = "AsSoonAsPossible" | "Scheduled";
+
+export interface PickupSlot {
+  label: string;
+  startsAt: string;
+}
+
+export interface PickupSlotsResponse {
+  supportsAsap: boolean;
+  date: string;
+  intervalMinutes: number;
+  slots: PickupSlot[];
+}
 
 export type OrderStatus =
   | "PendingConfirmation"
@@ -85,6 +139,8 @@ export interface OrderDetail {
   paymentReceivedAt?: string;
   statusHistory: OrderStatusHistory[];
   items: OrderItem[];
+  payment?: CustomerPayment;
+  paymentLaunch?: PaymentLaunch;
 }
 
 export interface OrderSummary {
@@ -105,6 +161,9 @@ export interface OrderSummary {
   completedAt?: string;
   paymentReceived: boolean;
   paymentMethodUsed?: PaymentMethodUsed;
+  onlinePaymentStatus?: PaymentStatus;
+  paidAt?: string;
+  refundedAt?: string;
 }
 
 export type CustomerOrdersPage = PagedResponse<OrderSummary>;
@@ -169,6 +228,7 @@ export interface StaffOrderSummary {
   paymentMethodUsed?: PaymentMethodUsed;
   itemQuantity: number;
   rowVersion: string;
+  onlinePaymentStatus?: PaymentStatus;
 }
 
 export interface StaffOrderDetail extends StaffOrderSummary {
@@ -179,6 +239,7 @@ export interface StaffOrderDetail extends StaffOrderSummary {
   rejectedAt?: string;
   statusHistory: OrderStatusHistory[];
   items: OrderItem[];
+  payment?: StaffPayment;
 }
 
 export type StaffOrdersPage = PagedResponse<StaffOrderSummary>;
@@ -253,4 +314,8 @@ export interface OrderRealtimeEvent {
   completedAt?: string;
   paymentReceived: boolean;
   paymentMethodUsed?: PaymentMethodUsed;
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
+  paidAt?: string;
+  refundedAt?: string;
 }

@@ -26,8 +26,9 @@ updates, customer profile management, searchable/filterable owned history,
 rich tracking details, repeat-order validation, and Administrator-only employee
 listing/details/creation/multi-role update/disable/enable/password reset/action
 history with optimistic concurrency and live account-state authorization.
-Online payment gateways, refunds, and persisted notification inboxes remain
-planned.
+Alif WebCheckout launch, callback, status verification, payment persistence,
+and live status delivery are implemented. Real Alif refund submission and
+persisted notification inboxes remain planned.
 
 Authentication:
 
@@ -386,31 +387,6 @@ Planned, not implemented in Sprint 3.2.
 
 ---
 
-## GET `/cafe/pickup-slots`
-
-Query:
-
-```text
-?date=2026-08-05
-```
-
-### Response
-
-```json
-{
-  "supportsAsap": true,
-  "maximumAdvanceMinutes": 240,
-  "intervalMinutes": 15,
-  "slots": [
-    "14:30",
-    "14:45",
-    "15:00"
-  ]
-}
-```
-
----
-
 # 5. Menu
 
 Public menu endpoints are anonymous.
@@ -643,6 +619,30 @@ clients must not call them.
 
 # 8. Checkout
 
+## GET `/orders/pickup-slots`
+
+Requires the `Customer` policy. Returns only today's available scheduled pickup
+times, starting at the next future 15-minute interval and ending 30 minutes
+before configured closing time. The frontend renders these values directly and
+does not generate additional times.
+
+```json
+{
+  "supportsAsap": true,
+  "date": "2026-08-12",
+  "intervalMinutes": 15,
+  "slots": [
+    {
+      "label": "14:15",
+      "startsAt": "2026-08-12T14:15:00+05:00"
+    }
+  ]
+}
+```
+
+The `slots` array is empty after the final available time; ASAP remains
+supported.
+
 ## POST `/orders`
 
 Creates a persistent order from the authenticated customer's local cart draft.
@@ -673,8 +673,8 @@ creation, and commit run inside one serializable transaction.
 `pickupMode` is `AsSoonAsPossible` or `Scheduled`; `paymentMethod` is
 `PayOnPickup` or `Online`. `Online` stores only the selected method and does
 not call a payment provider. For `AsSoonAsPossible`, `requestedPickupTime`
-must be null. For `Scheduled`, it is required and must be today, on a
-15-minute interval, inside configured business hours and the next four hours.
+must be null. For `Scheduled`, it is required and must be today, on a future
+15-minute interval between opening and 30 minutes before closing.
 The default café configuration is `Asia/Dushanbe`, `10:00-22:00`, and `TJS`.
 
 Checkout rejects missing, hidden, deleted, unavailable, or non-orderable
@@ -986,13 +986,31 @@ Manager cannot record payment. Only a ready `PayOnPickup` order is eligible.
 
 `paymentMethodUsed` is required and accepts `Cash` or `Card`. The operation
 stores payment time/employee, writes audit before/after data, rotates the row
-version, and emits `PaymentStatusChanged`. Online orders are already paid and
-reject this endpoint.
+version, and emits `PaymentStatusChanged`. Online orders reject this endpoint;
+their payment state is provider-controlled.
 
 ## POST `/staff/orders/{id}/complete`
 
 Requires `CanIssueOrders`. Only `ReadyForPickup` may become `Completed`.
-`PayOnPickup` must already have a recorded payment; Online is assumed paid.
+`PayOnPickup` must already have a recorded payment; Online requires a persisted
+payment in `Paid`.
+
+## Payment endpoints (Sprint 4.1)
+
+- `GET /payments/{paymentId}`: authenticated customer-owned business-safe state.
+- `POST /payments/{paymentId}/verify`: rate-limited server-side Alif `/checktxn`
+  verification; the customer cannot supply status, amount, or transaction data.
+- `POST /payments/alif/callback`: anonymous provider endpoint with a 32 KiB body
+  limit and IP rate limit. It verifies the response HMAC, provider order,
+  transaction compatibility, and exact amount before an atomic state/audit/
+  idempotency write.
+
+Online order creation may include `paymentLaunch` with `actionUrl`, `POST`, and
+the official form fields. This contract includes the public merchant key and a
+per-payment token because Alif WebCheckout requires a browser form POST. It
+never contains the password. Callback and status responses map `ok`, `failed`,
+`pending`, `canceled`, and `partially_canceled`; unknown callback states are
+rejected, while partial cancellation requires reconciliation.
 
 ```json
 { "rowVersion": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }

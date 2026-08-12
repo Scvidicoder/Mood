@@ -30,7 +30,7 @@ export interface ResetEmployeePasswordResponse {
 export interface EmployeeActionListItem {
   id: string;
   timestamp: string;
-  actingEmployeeId: string;
+  actingEmployeeId?: string;
   actingEmployeeName: string;
   actionType: string;
   entityType: string;

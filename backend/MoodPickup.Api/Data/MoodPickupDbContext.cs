@@ -49,6 +49,12 @@ public sealed class MoodPickupDbContext(DbContextOptions<MoodPickupDbContext> op
 
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
 
+    public DbSet<Payment> Payments => Set<Payment>();
+
+    public DbSet<PaymentAttempt> PaymentAttempts => Set<PaymentAttempt>();
+
+    public DbSet<PaymentWebhookEvent> PaymentWebhookEvents => Set<PaymentWebhookEvent>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         PrepareMenuEntities();

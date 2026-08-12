@@ -21,6 +21,7 @@ public sealed class EmployeeActionLogConfiguration
             .HasOne(log => log.Employee)
             .WithMany(employee => employee.ActionLogs)
             .HasForeignKey(log => log.EmployeeId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(log => new { log.CreatedAt, log.Id });
         builder.HasIndex(log => new { log.EmployeeId, log.CreatedAt });

@@ -11,6 +11,7 @@ import { formatDate, formatMoney } from "../utils/format";
 import {
   orderStatusLabel,
   paymentMethodLabel,
+  paymentStatusLabel,
 } from "../utils/orderPresentation";
 
 interface OrderSuccessLocationState {
@@ -69,6 +70,13 @@ export function OrderSuccessPage() {
   }
 
   const value = order.data;
+  if (
+    location.pathname.startsWith("/order-success/") &&
+    initialOrder?.id === value.id
+  ) {
+    return <OrderCreatedSummary order={value} titleRef={headingRef} />;
+  }
+
   const reachedStatuses = new Set(value.statusHistory.map((history) => history.newStatus));
   reachedStatuses.add("PendingConfirmation");
 
@@ -202,13 +210,23 @@ export function OrderSuccessPage() {
               <div>
                 <dt>Payment status</dt>
                 <dd>
-                  {value.paymentReceived
+                  {value.payment
+                    ? paymentStatusLabel(value.payment.status)
+                    : value.paymentReceived
                     ? `Received${value.paymentMethodUsed ? ` by ${value.paymentMethodUsed.toLowerCase()}` : ""}`
                     : "Due at pickup"}
                 </dd>
               </div>
+              {value.payment ? (
+                <div><dt>Payment amount</dt><dd>{formatMoney(value.payment.amount, value.payment.currency)}</dd></div>
+              ) : null}
+              <OptionalDate label="Paid" value={value.payment?.paidAt} />
+              <OptionalDate label="Refunded" value={value.payment?.refundedAt} />
               <OptionalDate label="Payment received" value={value.paymentReceivedAt} />
             </dl>
+            {value.payment?.failureReason ? (
+              <p className="payment-result-reason">{value.payment.failureReason}</p>
+            ) : null}
             {value.comment ? (
               <div className="profile-order-comment">
                 <strong>Customer comment</strong>
@@ -239,6 +257,39 @@ export function OrderSuccessPage() {
             <Link className="button button-secondary button-link" to="/">Back to menu</Link>
           </div>
         </aside>
+      </div>
+    </section>
+  );
+}
+
+function OrderCreatedSummary({
+  order,
+  titleRef,
+}: {
+  order: OrderDetail;
+  titleRef: React.RefObject<HTMLHeadingElement | null>;
+}) {
+  return (
+    <section className="order-success-page">
+      <div className="order-success-card">
+        <span aria-hidden="true" className="menu-feedback__mark">✓</span>
+        <p className="eyebrow">Order placed</p>
+        <h1 ref={titleRef} tabIndex={-1}>Thank you. We have your order.</h1>
+        <p>The café will confirm it shortly. You can follow every update live.</p>
+        <dl className="order-success-details">
+          <div><dt>Order number</dt><dd>{order.orderNumber}</dd></div>
+          <div><dt>Pickup time</dt><dd>{pickupLabel(order)}</dd></div>
+          <div><dt>Payment method</dt><dd>{paymentMethodLabel(order.paymentMethod)}</dd></div>
+          <div><dt>Order status</dt><dd>{orderStatusLabel(order.status)}</dd></div>
+        </dl>
+        <div className="order-success-actions">
+          <Link className="button button-link" to={`/profile/orders/${order.id}`}>
+            Track Order
+          </Link>
+          <Link className="button button-link button-secondary" to="/">
+            Back to Menu
+          </Link>
+        </div>
       </div>
     </section>
   );

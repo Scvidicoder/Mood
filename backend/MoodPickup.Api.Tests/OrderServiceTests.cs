@@ -13,6 +13,38 @@ namespace MoodPickup.Api.Tests;
 public sealed class OrderServiceTests
 {
     [Fact]
+    public async Task PickupSlots_StartAtNextInterval_AndEndThirtyMinutesBeforeClosing()
+    {
+        await using var fixture = await OrderFixture.CreateAsync();
+        var timeProvider = new TestTimeProvider();
+        timeProvider.SetUtcNow(new DateTimeOffset(2026, 8, 12, 9, 7, 0, TimeSpan.Zero));
+        var service = fixture.CreateService(timeProvider);
+
+        var result = await service.GetPickupSlotsAsync(CancellationToken.None);
+
+        Assert.Equal(new DateOnly(2026, 8, 12), result.Date);
+        Assert.Equal(15, result.IntervalMinutes);
+        Assert.Equal("14:15", result.Slots[0].Label);
+        Assert.Equal("21:30", result.Slots[^1].Label);
+        Assert.All(
+            result.Slots,
+            slot => Assert.Equal(TimeSpan.FromHours(5), slot.StartsAt.Offset));
+    }
+
+    [Fact]
+    public async Task PickupSlots_AreEmptyAfterTheLastAvailableTime()
+    {
+        await using var fixture = await OrderFixture.CreateAsync();
+        var timeProvider = new TestTimeProvider();
+        timeProvider.SetUtcNow(new DateTimeOffset(2026, 8, 12, 16, 31, 0, TimeSpan.Zero));
+        var service = fixture.CreateService(timeProvider);
+
+        var result = await service.GetPickupSlotsAsync(CancellationToken.None);
+
+        Assert.Empty(result.Slots);
+    }
+
+    [Fact]
     public async Task Checkout_CreatesAnImmutableServerCalculatedSnapshot()
     {
         await using var fixture = await OrderFixture.CreateAsync();
@@ -276,14 +308,15 @@ public sealed class OrderServiceTests
                 productOption);
         }
 
-        public OrderService CreateService()
+        public OrderService CreateService(TimeProvider? timeProvider = null)
         {
             return new OrderService(
                 DbContext,
                 new TestCurrentUserContext(Customer.Id),
                 new MenuConfigurationValidator(),
+                new TestPaymentService(),
                 new StaticOptionsMonitor<CheckoutOptions>(new CheckoutOptions()),
-                TimeProvider.System);
+                timeProvider ?? TimeProvider.System);
         }
 
         public async ValueTask DisposeAsync()

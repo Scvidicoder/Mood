@@ -1,11 +1,14 @@
 using MoodPickup.Api.DTOs.Orders;
+using MoodPickup.Api.DTOs.Payments;
 using MoodPickup.Api.Entities;
 
 namespace MoodPickup.Api.Services;
 
 internal static class OrderDtoMapper
 {
-    public static OrderDetailDto ToCustomerDetail(Order order)
+    public static OrderDetailDto ToCustomerDetail(
+        Order order,
+        PaymentLaunchResponse? paymentLaunch = null)
     {
         return new OrderDetailDto(
             order.Id,
@@ -31,7 +34,36 @@ internal static class OrderDtoMapper
             order.PaymentMethodUsed,
             order.PaymentReceivedAt,
             ToStatusHistory(order),
-            ToItems(order));
+            ToItems(order),
+            order.Payment is null ? null : ToCustomerPayment(order.Payment),
+            paymentLaunch);
+    }
+
+    public static CustomerPaymentDto ToCustomerPayment(Payment payment)
+    {
+        return new CustomerPaymentDto(
+            payment.Id,
+            payment.OrderId,
+            payment.Status,
+            payment.Amount,
+            payment.Currency,
+            payment.CreatedAt,
+            payment.PaidAt,
+            payment.RefundedAt,
+            payment.FailureReason);
+    }
+
+    public static StaffPaymentDto ToStaffPayment(Payment payment)
+    {
+        return new StaffPaymentDto(
+            payment.Provider,
+            payment.Status,
+            payment.ProviderTransactionId,
+            payment.Amount,
+            payment.Currency,
+            payment.PaidAt,
+            payment.RefundedAt,
+            payment.FailureReason);
     }
 
     public static IReadOnlyList<OrderStatusHistoryDto> ToStatusHistory(Order order)

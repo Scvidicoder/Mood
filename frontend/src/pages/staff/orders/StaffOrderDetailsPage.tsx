@@ -8,6 +8,7 @@ import { formatDate, formatMoney } from "../../../utils/format";
 import {
   orderStatusLabel,
   paymentMethodLabel,
+  paymentStatusLabel,
   pickupModeLabel,
 } from "../../../utils/orderPresentation";
 
@@ -44,6 +45,11 @@ export function StaffOrderDetailsPage() {
             {value.estimatedReadyAt ? <div><dt>Estimated ready</dt><dd>{formatDate(value.estimatedReadyAt)}</dd></div> : null}
             <div><dt>Payment</dt><dd>{paymentMethodLabel(value.paymentMethod)}</dd></div>
             <div><dt>Payment received</dt><dd>{value.paymentReceived ? "Yes" : "No"}</dd></div>
+            {value.payment ? <div><dt>Provider</dt><dd>{value.payment.provider}</dd></div> : null}
+            {value.payment ? <div><dt>Provider status</dt><dd>{paymentStatusLabel(value.payment.status)}</dd></div> : null}
+            {value.payment?.transactionId ? <div><dt>Transaction</dt><dd>{value.payment.transactionId}</dd></div> : null}
+            {value.payment?.paidAt ? <div><dt>Paid</dt><dd>{formatDate(value.payment.paidAt)}</dd></div> : null}
+            {value.payment?.refundedAt ? <div><dt>Refunded</dt><dd>{formatDate(value.payment.refundedAt)}</dd></div> : null}
             {value.paymentMethodUsed ? <div><dt>Payment method used</dt><dd>{value.paymentMethodUsed}</dd></div> : null}
             {value.preparationStartedAt ? <div><dt>Preparation started</dt><dd>{formatDate(value.preparationStartedAt)}</dd></div> : null}
             {value.readyAt ? <div><dt>Ready</dt><dd>{formatDate(value.readyAt)}</dd></div> : null}
@@ -51,6 +57,7 @@ export function StaffOrderDetailsPage() {
           </dl>
           {value.comment ? <p className="staff-order-comment"><strong>Customer comment:</strong> {value.comment}</p> : null}
           {value.rejectReason ? <p className="order-reject-reason"><strong>Rejection reason:</strong> {value.rejectReason}</p> : null}
+          {value.payment?.failureReason ? <p className="order-reject-reason"><strong>Payment attention:</strong> {value.payment.failureReason}</p> : null}
         </article>
         <article className="panel">
           <h2>Totals</h2>

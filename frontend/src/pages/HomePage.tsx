@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useEffect,
   useMemo,
@@ -9,33 +9,78 @@ import {
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   getPublicCategories,
+  getPublicProduct,
   getPublicProducts,
 } from "../api/menu/publicMenu";
 import { ErrorState } from "../components/ErrorState";
 import { PublicMenuSkeleton } from "../components/PublicMenuSkeleton";
 import { PublicProductImage } from "../components/PublicProductImage";
+import { ProductConfigurator } from "../components/ProductConfigurator";
+import { useToast } from "../components/ToastProvider";
+import {
+  cartActions,
+  selectCartSubtotalMinor,
+  selectCartTotalQuantity,
+} from "../features/cart/cartSlice";
+import {
+  buildCartLine,
+  createInitialSelection,
+  validateConfiguration,
+  type ConfigurationResult,
+  type ProductSelection,
+} from "../features/cart/configuration";
 import { menuQueryKeys } from "../features/menu/queryKeys";
+import { useAppDispatch, useAppSelector } from "../store";
 import type {
   MenuIssue,
   PublicCategory,
+  PublicProductDetail,
   PublicProductListItem,
 } from "../types/menu";
-import { formatMoney } from "../utils/format";
+import { formatMoney, formatMoneyMinor } from "../utils/format";
 
 const searchDebounceMilliseconds = 300;
 
 export function HomePage() {
+  const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get("search")?.trim() ?? "";
   const categoryId = searchParams.get("category") ?? "";
   const [searchInput, setSearchInput] = useState(search);
   const [observedCategoryId, setObservedCategoryId] = useState("");
+  const [addingProductId, setAddingProductId] = useState("");
+  const [addedProductId, setAddedProductId] = useState("");
+  const [configuringProduct, setConfiguringProduct] =
+    useState<PublicProductDetail>();
   const menuRootRef = useRef<HTMLDivElement>(null);
+  const cartQuantity = useAppSelector(selectCartTotalQuantity);
+  const cartSubtotalMinor = useAppSelector(selectCartSubtotalMinor);
 
   useEffect(() => {
     setSearchInput(search);
   }, [search]);
+
+  useEffect(() => {
+    if (!configuringProduct) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setConfiguringProduct(undefined);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [configuringProduct]);
 
   useEffect(() => {
     const nextSearch = searchInput.trim();
@@ -130,6 +175,71 @@ export function HomePage() {
       },
       { replace: true },
     );
+  }
+
+  function showAdded(productName: string, productId: string) {
+    setAddedProductId(productId);
+    notify(`${productName} added to your cart.`);
+    window.setTimeout(() => {
+      setAddedProductId((current) => (current === productId ? "" : current));
+    }, 1500);
+  }
+
+  async function addFromCard(product: PublicProductListItem) {
+    if (!product.isOrderable || addingProductId) {
+      return;
+    }
+
+    setAddingProductId(product.id);
+    try {
+      const detail = await queryClient.fetchQuery({
+        queryKey: menuQueryKeys.publicProduct(product.id),
+        queryFn: ({ signal }) => getPublicProduct(product.id, signal),
+      });
+      if (detail.optionGroups.length > 0) {
+        setConfiguringProduct(detail);
+        return;
+      }
+
+      const initial = createInitialSelection(detail);
+      const result = validateConfiguration(
+        detail,
+        initial.selection,
+        initial.warnings,
+      );
+      if (!result.isValid) {
+        setConfiguringProduct(detail);
+        return;
+      }
+
+      dispatch(
+        cartActions.addConfiguredLine(
+          buildCartLine(detail, initial.selection, result),
+        ),
+      );
+      showAdded(detail.name, detail.id);
+    } catch {
+      notify("We couldn’t prepare this item. Please try again.", "error");
+    } finally {
+      setAddingProductId("");
+    }
+  }
+
+  function addConfiguredProduct(
+    selection: ProductSelection,
+    result: ConfigurationResult,
+  ) {
+    if (!configuringProduct) {
+      return;
+    }
+
+    dispatch(
+      cartActions.addConfiguredLine(
+        buildCartLine(configuringProduct, selection, result),
+      ),
+    );
+    showAdded(configuringProduct.name, configuringProduct.id);
+    setConfiguringProduct(undefined);
   }
 
   return (
@@ -260,8 +370,11 @@ export function HomePage() {
                 <div className="menu-product-grid">
                   {categoryProducts.map((product) => (
                     <ProductCard
+                      added={addedProductId === product.id}
+                      adding={addingProductId === product.id}
                       from={`${location.pathname}${location.search}${location.hash}`}
                       key={product.id}
+                      onAdd={() => void addFromCard(product)}
                       product={product}
                     />
                   ))}
@@ -297,15 +410,61 @@ export function HomePage() {
           )}
         </div>
       </div>
+      {configuringProduct ? (
+        <div
+          aria-labelledby="quick-configurator-title"
+          aria-modal="true"
+          className="quick-configurator-backdrop"
+          role="dialog"
+        >
+          <div className="quick-configurator">
+            <div className="quick-configurator__heading">
+              <div>
+                <p className="eyebrow">Quick add</p>
+                <h2 id="quick-configurator-title">{configuringProduct.name}</h2>
+              </div>
+              <button
+                aria-label="Close configurator"
+                autoFocus
+                className="quick-configurator__close"
+                onClick={() => setConfiguringProduct(undefined)}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+            <ProductConfigurator
+              onSubmit={addConfiguredProduct}
+              product={configuringProduct}
+              submitLabel="Add to Cart"
+            />
+          </div>
+        </div>
+      ) : null}
+      {cartQuantity > 0 ? (
+        <Link className="mobile-cart-summary" to="/cart">
+          <strong>Cart</strong>
+          <span>
+            {cartQuantity} {cartQuantity === 1 ? "item" : "items"}
+          </span>
+          <strong>{formatMoneyMinor(cartSubtotalMinor)}</strong>
+        </Link>
+      ) : null}
     </>
   );
 }
 
 function ProductCard({
+  added,
+  adding,
   from,
+  onAdd,
   product,
 }: {
+  added: boolean;
+  adding: boolean;
   from: string;
+  onAdd: () => void;
   product: PublicProductListItem;
 }) {
   return (
@@ -361,13 +520,20 @@ function ProductCard({
         {!product.isOrderable ? (
           <AvailabilityIssues issues={product.availabilityIssues} />
         ) : null}
-        <Link
-          className="menu-product-card__details"
-          state={{ from }}
-          to={`/product/${product.id}`}
+        <button
+          className="button menu-product-card__add"
+          disabled={!product.isOrderable || adding}
+          onClick={onAdd}
+          type="button"
         >
-          View details <span aria-hidden="true">→</span>
-        </Link>
+          {!product.isOrderable
+            ? "Out of Stock"
+            : adding
+              ? "Adding…"
+              : added
+                ? "✓ Added"
+                : "Add"}
+        </button>
       </div>
     </article>
   );

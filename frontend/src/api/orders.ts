@@ -9,6 +9,7 @@ import type {
   OrderDetail,
   OrderVersionInput,
   OrderStatus,
+  PickupSlotsResponse,
   RecordPaymentInput,
   RepeatOrderResult,
   RejectOrderInput,
@@ -21,6 +22,10 @@ import { queryString } from "./queryString";
 
 export function createOrder(input: CreateOrderInput): Promise<OrderDetail> {
   return apiClient.post<OrderDetail>("orders", input);
+}
+
+export function getPickupSlots(signal?: AbortSignal): Promise<PickupSlotsResponse> {
+  return apiClient.get<PickupSlotsResponse>("orders/pickup-slots", { signal });
 }
 
 export function getOrder(id: string, signal?: AbortSignal): Promise<OrderDetail> {

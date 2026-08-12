@@ -132,6 +132,42 @@ public sealed class StaffOrderServiceTests
         Assert.Contains("EstimatedReadyTimeChanged", auditActions);
     }
 
+    [Fact]
+    public async Task Rejection_OfPaidOnlineOrderFlagsRefundAndNotifiesCustomer()
+    {
+        await using var fixture = await StaffOrderFixture.CreateAsync();
+        fixture.Order.PaymentMethod = PaymentMethod.Online;
+        fixture.Order.PaymentReceived = true;
+        fixture.Order.Payment = new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = fixture.Order.Id,
+            Order = fixture.Order,
+            Provider = PaymentProvider.Alif,
+            ProviderOrderId = "provider-order",
+            ProviderTransactionId = "provider-transaction",
+            Status = PaymentStatus.Paid,
+            Amount = fixture.Order.Total,
+            Currency = fixture.Order.Currency,
+            PaidAt = Now
+        };
+        fixture.DbContext.Payments.Add(fixture.Order.Payment);
+        await fixture.DbContext.SaveChangesAsync();
+        var payments = new TestPaymentService { MarkRefundRequired = true };
+        var service = fixture.CreateService(payments);
+
+        await service.RejectAsync(
+            fixture.Order.Id,
+            new RejectOrderRequest("Kitchen capacity is full.", fixture.Order.RowVersion),
+            CancellationToken.None);
+
+        Assert.Equal(PaymentStatus.RefundRequired, fixture.Order.Payment.Status);
+        Assert.Equal(1, payments.MarkRefundRequiredCalls);
+        Assert.Equal(
+            ["OrderRejected", "RefundStatusChanged"],
+            fixture.Notifier.Notifications.Select(item => item.EventName).ToArray());
+    }
+
     private sealed class StaffOrderFixture : IAsyncDisposable
     {
         private readonly DbContextOptions<MoodPickupDbContext> _options;
@@ -200,13 +236,14 @@ public sealed class StaffOrderServiceTests
             return new StaffOrderFixture(options, dbContext, customer, employee, order);
         }
 
-        public StaffOrderService CreateService()
+        public StaffOrderService CreateService(IPaymentService? paymentService = null)
         {
             var context = new StaffCurrentUserContext(Customer.Id, Employee.Id);
             return new StaffOrderService(
                 DbContext,
                 context,
                 new EmployeeAuditService(DbContext, context),
+                paymentService ?? new TestPaymentService(),
                 Notifier,
                 new StaticOptionsMonitor<CheckoutOptions>(new CheckoutOptions()),
                 _timeProvider,
@@ -291,6 +328,15 @@ public sealed class StaffOrderServiceTests
             CancellationToken cancellationToken)
         {
             Notifications.Add(new("PaymentStatusChanged", customerId, notification));
+            return Task.CompletedTask;
+        }
+
+        public Task RefundStatusChangedAsync(
+            Guid customerId,
+            OrderRealtimeEventDto notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(new("RefundStatusChanged", customerId, notification));
             return Task.CompletedTask;
         }
 

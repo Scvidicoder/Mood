@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MoodPickup.Api.Data;
+using MoodPickup.Api.DTOs.Payments;
 using MoodPickup.Api.Entities;
 using MoodPickup.Api.Infrastructure;
 using MoodPickup.Api.Interfaces;
@@ -28,6 +29,8 @@ public sealed class PostgresMoodPickupApiFactory : WebApplicationFactory<Program
     public TestTimeProvider TimeProvider { get; } = new();
 
     public TestTelegramOtpSender OtpSender { get; } = new();
+
+    public TestAlifPaymentProvider PaymentProvider { get; } = new();
 
     public bool FailAuditWrites { get; set; }
 
@@ -61,7 +64,15 @@ public sealed class PostgresMoodPickupApiFactory : WebApplicationFactory<Program
                 ["AdministratorSeed:Enabled"] = "true",
                 ["AdministratorSeed:Username"] = "admin",
                 ["AdministratorSeed:Password"] = "TestingAdmin1!",
-                ["AdministratorSeed:FullName"] = "PostgreSQL Test Administrator"
+                ["AdministratorSeed:FullName"] = "PostgreSQL Test Administrator",
+                ["Payment:Provider"] = "Alif",
+                ["Alif:Enabled"] = "true",
+                ["Alif:Environment"] = "Sandbox",
+                ["Alif:Key"] = "44444444",
+                ["Alif:Password"] = "cztef62wrwcysyubbbdnhlk1rs2cztfsqgwww7j0",
+                ["Alif:CallbackUrl"] = "https://localhost/api/v1/payments/alif/callback",
+                ["Alif:ReturnUrl"] = "https://localhost/payment/result",
+                ["Alif:Gate"] = "km"
             });
         });
         builder.ConfigureServices(services =>
@@ -82,6 +93,8 @@ public sealed class PostgresMoodPickupApiFactory : WebApplicationFactory<Program
                     new EmployeeAuditService(
                         provider.GetRequiredService<MoodPickupDbContext>(),
                         provider.GetRequiredService<ICurrentUserContext>())));
+            services.RemoveAll<IPaymentProvider>();
+            services.AddSingleton<IPaymentProvider>(PaymentProvider);
         });
     }
 
@@ -99,6 +112,7 @@ public sealed class PostgresMoodPickupApiFactory : WebApplicationFactory<Program
         FailAuditWrites = false;
         TimeProvider.Reset();
         OtpSender.Clear();
+        PaymentProvider.Reset();
         ResetMediaStorage();
 
         await using var scope = Services.CreateAsyncScope();
@@ -404,5 +418,62 @@ public sealed class PostgresMoodPickupApiFactory : WebApplicationFactory<Program
                 newValues,
                 cancellationToken);
         }
+    }
+}
+
+public sealed class TestAlifPaymentProvider : IPaymentProvider
+{
+    public PaymentProvider Provider => PaymentProvider.Alif;
+
+    public PaymentProviderStatusResult? CheckResult { get; set; }
+
+    public int RefundCalls { get; private set; }
+
+    public Task<PaymentLaunchResponse> CreatePaymentLaunchAsync(
+        PaymentProviderLaunchRequest request,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(new PaymentLaunchResponse(
+            request.PaymentId,
+            "https://test-web.alif.tj/",
+            HttpMethod.Post.Method,
+            new Dictionary<string, string>
+            {
+                ["key"] = "44444444",
+                ["token"] = "test-per-payment-token",
+                ["orderId"] = request.ProviderOrderId,
+                ["amount"] = AlifSignatureService.FormatAmount(request.Amount),
+                ["callbackUrl"] = "https://localhost/api/v1/payments/alif/callback",
+                ["returnUrl"] = $"https://localhost/payment/result?paymentId={request.PaymentId:D}",
+                ["phone"] = request.CustomerPhoneNumber[4..],
+                ["gate"] = "km"
+            }));
+    }
+
+    public Task<PaymentProviderStatusResult> CheckPaymentStatusAsync(
+        string providerOrderId,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(CheckResult ?? new PaymentProviderStatusResult(
+            providerOrderId,
+            "test-transaction",
+            "pending",
+            0m,
+            PaymentStatus.Pending,
+            null));
+    }
+
+    public Task<PaymentProviderRefundResult> RefundAsync(
+        PaymentProviderRefundRequest request,
+        CancellationToken cancellationToken)
+    {
+        RefundCalls++;
+        throw new InvalidOperationException("PostgreSQL tests must not send refunds.");
+    }
+
+    public void Reset()
+    {
+        CheckResult = null;
+        RefundCalls = 0;
     }
 }

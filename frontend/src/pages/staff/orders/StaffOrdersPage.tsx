@@ -24,6 +24,7 @@ import { formatDate, formatMoney } from "../../../utils/format";
 import {
   orderStatusLabel,
   paymentMethodLabel,
+  paymentStatusLabel,
   pickupModeLabel,
 } from "../../../utils/orderPresentation";
 
@@ -191,6 +192,7 @@ export function StaffOrdersPage() {
                 {order.requestedPickupTime ? <div><dt>Requested</dt><dd>{formatDate(order.requestedPickupTime)}</dd></div> : null}
                 <div><dt>Payment</dt><dd>{paymentMethodLabel(order.paymentMethod)}</dd></div>
                 <div><dt>Payment received</dt><dd>{order.paymentReceived ? "Yes" : "No"}</dd></div>
+                {order.onlinePaymentStatus ? <div><dt>Provider status</dt><dd>{paymentStatusLabel(order.onlinePaymentStatus)}</dd></div> : null}
                 <div><dt>Items</dt><dd>{order.itemQuantity}</dd></div>
                 <div><dt>Total</dt><dd>{formatMoney(order.total, order.currency)}</dd></div>
                 {order.estimatedReadyAt ? <div><dt>Estimated ready</dt><dd>{formatDate(order.estimatedReadyAt)}</dd></div> : null}
@@ -214,7 +216,7 @@ export function StaffOrdersPage() {
                     ) : null}
                     <button
                       className="button"
-                      disabled={order.paymentMethod === "PayOnPickup" && !order.paymentReceived}
+                      disabled={!order.paymentReceived}
                       onClick={() => openDialog("complete", order)}
                       type="button"
                     >

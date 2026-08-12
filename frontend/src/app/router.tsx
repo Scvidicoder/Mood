@@ -34,6 +34,8 @@ import { CreateEmployeePage } from "../pages/staff/employees/CreateEmployeePage"
 import { EmployeeDetailPage } from "../pages/staff/employees/EmployeeDetailPage";
 import { EmployeeListPage } from "../pages/staff/employees/EmployeeListPage";
 import { VerifyCodePage } from "../pages/VerifyCodePage";
+import { PaymentResultPage } from "../pages/PaymentResultPage";
+import { DevelopmentPaymentPage } from "../pages/DevelopmentPaymentPage";
 
 export const router = createBrowserRouter([
   {
@@ -57,6 +59,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute accountType="customer">
             <CheckoutPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "dev/payment/:paymentId",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <DevelopmentPaymentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "payment/result",
+        element: (
+          <ProtectedRoute accountType="customer">
+            <PaymentResultPage />
           </ProtectedRoute>
         ),
       },

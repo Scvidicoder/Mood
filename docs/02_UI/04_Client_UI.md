@@ -1,7 +1,7 @@
 
 # Client UI Specification
 
-Version: 1.6 (Sprint 3.9)
+Version: 1.7 (Sprint 4.2)
 
 ## 1. Purpose
 
@@ -14,7 +14,8 @@ checkout, My Orders, and live order detail. Sprint 3.8 adds preparation,
 ready-for-pickup, payment-state, completion, progress, ETA, and status-history
 presentation. Sprint 3.9 adds the complete profile cabinet, searchable and
 filterable order history, rich timeline details, and reviewed repeat-order
-cart restoration. Online gateways and refunds remain planned.
+cart restoration. Sprint 4.1 adds hosted Alif checkout and an authoritative
+payment-result screen. Real provider refund submission remains planned.
 
 ## 2. Navigation Structure
 
@@ -104,9 +105,16 @@ Each card displays:
 - Orderability state and structured availability messages
 - Details link
 
-Cards remain focused on browsing and link to details rather than duplicating
-the configurator. Product availability/orderability comes from the public API;
-the frontend does not reproduce backend orderability.
+Each card has an explicit `Add` action. Products with no option groups add their
+server-provided default configuration immediately; configurable products open
+the shared configurator directly in a focused overlay. Product details open
+only from an intentional click on the product image or name. Product
+availability/orderability comes from the public API; unavailable products stay
+visible and show `Out of Stock` instead of an ordering action.
+
+An add operation disables repeat clicks while current product details load,
+updates the Redux cart badge immediately, briefly changes the card action to
+`✓ Added`, and shows a small success toast.
 
 ## 3.6 States
 
@@ -152,7 +160,7 @@ menu contract.
 - configured measurement/calorie value when one selected public value supplies
   an unambiguous explicit value
 - structured local validation
-- Add to cart or Save cart changes action
+- Sticky `Add to Cart • XX TJS` or `Save Changes • XX TJS` action
 
 ## 4.3 Option Group Presentation
 
@@ -375,9 +383,13 @@ Options:
 Pickup time rules:
 
 - Today only
-- Up to four hours ahead
 - Fifteen-minute intervals
-- Only during café working hours
+- Begin at the next future 15-minute interval
+- End 30 minutes before café closing time
+- Render only the times returned by the backend
+
+Pickup choices are presented as selectable chips. There is no date input,
+calendar, or tomorrow option.
 
 For ASAP:
 
@@ -501,7 +513,8 @@ It disappears once the café confirms or rejects the order.
 
 Before cancellation, display confirmation.
 
-Refund messaging is not implemented because refunds are outside Sprint 3.9.
+Paid rejected orders display `Refund required`; the UI never says refunded
+until the backend has a provider-confirmed `Refunded` state.
 
 ## 9.6 Time Changes
 
@@ -647,6 +660,8 @@ The ready reminder is sent once after fifteen minutes.
 - Large controls
 - Minimum touch target: 44x44 px
 - Category navigation remains accessible
+- Menu browsing shows a sticky bottom cart summary with item count and total
+- The configurator keeps its live-price add/save action sticky at the bottom
 
 ## Tablet
 

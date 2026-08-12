@@ -1,7 +1,7 @@
 export interface AuditLogListItem {
   id: string;
   timestamp: string;
-  employeeId: string;
+  employeeId?: string;
   employeeName: string;
   actionType: string;
   entityType: string;

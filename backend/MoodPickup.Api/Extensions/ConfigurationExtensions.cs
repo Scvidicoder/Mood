@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using MoodPickup.Api.Entities;
 using MoodPickup.Api.Options;
 
 namespace MoodPickup.Api.Extensions;
@@ -158,11 +159,77 @@ public static class ConfigurationExtensions
                 options => IsValidTimeRange(options.OpeningTime, options.ClosingTime),
                 "Checkout:OpeningTime and Checkout:ClosingTime must use HH:mm and form a same-day range.")
             .Validate(
-                options => options.SchedulingWindowHours == 4,
-                "Checkout:SchedulingWindowHours must be 4 for the current API contract.")
-            .Validate(
                 options => options.PickupIntervalMinutes == 15,
                 "Checkout:PickupIntervalMinutes must be 15 for the current API contract.")
+            .ValidateOnStart();
+
+        services
+            .AddOptions<PaymentOptions>()
+            .Bind(configuration.GetSection(PaymentOptions.SectionName))
+            .Configure(options =>
+            {
+                var configuredProvider = configuration["PAYMENT_PROVIDER"];
+                if (Enum.TryParse<PaymentProvider>(
+                        configuredProvider,
+                        true,
+                        out var provider))
+                {
+                    options.Provider = provider;
+                }
+            })
+            .Validate(
+                _ =>
+                {
+                    var configuredProvider = configuration["PAYMENT_PROVIDER"];
+                    return string.IsNullOrWhiteSpace(configuredProvider) ||
+                           Enum.TryParse<PaymentProvider>(
+                               configuredProvider,
+                               true,
+                               out var provider) &&
+                           provider is PaymentProvider.Development or
+                               PaymentProvider.Alif;
+                },
+                "PAYMENT_PROVIDER must be Development or Alif.")
+            .Validate(
+                options => options.Provider is PaymentProvider.Development or
+                    PaymentProvider.Alif,
+                "PAYMENT_PROVIDER must be Development or Alif.")
+            .Validate(
+                options => options.Provider != PaymentProvider.Development ||
+                    environment.IsDevelopment(),
+                "The Development payment provider may be selected only in Development.")
+            .ValidateOnStart();
+
+        services
+            .AddOptions<AlifOptions>()
+            .Bind(configuration.GetSection(AlifOptions.SectionName))
+            .Validate(
+                options => options.Environment is "Sandbox" or "Production",
+                "Alif:Environment must be Sandbox or Production.")
+            .Validate(
+                options => !options.Enabled ||
+                           (!string.IsNullOrWhiteSpace(options.Key) &&
+                            options.Key.All(char.IsAsciiDigit)),
+                "Alif:Key must contain only digits when Alif is enabled.")
+            .Validate(
+                options => !options.Enabled || !string.IsNullOrWhiteSpace(options.Password),
+                "Alif:Password is required when Alif is enabled.")
+            .Validate(
+                options => !options.Enabled || IsSecureAbsoluteUrl(options.CallbackUrl),
+                "Alif:CallbackUrl must be an absolute HTTPS URL when Alif is enabled.")
+            .Validate(
+                options => !options.Enabled || IsSecureAbsoluteUrl(options.ReturnUrl),
+                "Alif:ReturnUrl must be an absolute HTTPS URL when Alif is enabled.")
+            .Validate(
+                options => options.Gate is "km" or "salom",
+                "Alif:Gate must be km or salom.")
+            .Validate(
+                options => IsSecureAbsoluteUrl(options.SandboxBaseUrl) &&
+                           IsSecureAbsoluteUrl(options.ProductionBaseUrl),
+                "Alif base URLs must be absolute HTTPS URLs.")
+            .Validate(
+                options => options.ApiTimeoutSeconds is >= 2 and <= 60,
+                "Alif:ApiTimeoutSeconds must be between 2 and 60.")
             .ValidateOnStart();
 
         services
@@ -338,6 +405,15 @@ public static class ConfigurationExtensions
         {
             return false;
         }
+    }
+
+    private static bool IsSecureAbsoluteUrl(string value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+               uri.Scheme == Uri.UriSchemeHttps &&
+               !string.IsNullOrWhiteSpace(uri.Host) &&
+               string.IsNullOrEmpty(uri.UserInfo) &&
+               string.IsNullOrEmpty(uri.Fragment);
     }
 
     private static bool IsValidTimeRange(string openingTime, string closingTime)

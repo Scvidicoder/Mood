@@ -10,6 +10,7 @@ import type { CustomerOrderFilter } from "../types/orders";
 import { formatDate, formatMoney } from "../utils/format";
 import {
   orderStatusLabel,
+  paymentStatusLabel,
   pickupModeLabel,
 } from "../utils/orderPresentation";
 
@@ -121,6 +122,9 @@ export function MyOrdersPage() {
                 <div><dt>Total</dt><dd>{formatMoney(order.total, order.currency)}</dd></div>
                 <div><dt>Pickup</dt><dd>{pickupModeLabel(order.pickupMode)}</dd></div>
                 <div><dt>Items</dt><dd>{order.itemQuantity}</dd></div>
+                {order.onlinePaymentStatus ? (
+                  <div><dt>Payment</dt><dd>{paymentStatusLabel(order.onlinePaymentStatus)}</dd></div>
+                ) : null}
                 {order.estimatedReadyAt ? (
                   <div><dt>Estimated ready</dt><dd>{formatDate(order.estimatedReadyAt)}</dd></div>
                 ) : null}

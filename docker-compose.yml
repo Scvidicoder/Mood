@@ -56,6 +56,18 @@ services:
       MediaStorage__MaximumImageWidth: ${MEDIA_MAXIMUM_IMAGE_WIDTH:-6000}
       MediaStorage__MaximumImageHeight: ${MEDIA_MAXIMUM_IMAGE_HEIGHT:-6000}
       MediaStorage__MaximumDecodedImageBytes: ${MEDIA_MAXIMUM_DECODED_IMAGE_BYTES:-268435456}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-Development}
+      Alif__Enabled: ${ALIF_ENABLED:-false}
+      Alif__Environment: ${ALIF_ENVIRONMENT:-Sandbox}
+      Alif__UseSandbox: ${ALIF_USE_SANDBOX:-true}
+      Alif__Key: ${ALIF_KEY:-}
+      Alif__Password: ${ALIF_PASSWORD:-}
+      Alif__CallbackUrl: ${ALIF_CALLBACK_URL:-}
+      Alif__ReturnUrl: ${ALIF_RETURN_URL:-}
+      Alif__Gate: ${ALIF_GATE:-km}
+      Alif__SandboxBaseUrl: ${ALIF_SANDBOX_BASE_URL:-https://test-web.alif.tj/}
+      Alif__ProductionBaseUrl: ${ALIF_PRODUCTION_BASE_URL:-https://web.alif.tj/}
+      Alif__ApiTimeoutSeconds: ${ALIF_API_TIMEOUT_SECONDS:-15}
       AdministratorSeed__Enabled: ${ADMIN_SEED_ENABLED:-true}
       AdministratorSeed__Username: ${ADMIN_USERNAME:-admin}
       AdministratorSeed__Password: ${ADMIN_PASSWORD:-ChangeThisDev1!}

@@ -1,3 +1,4 @@
+using MoodPickup.Api.DTOs.Payments;
 using MoodPickup.Api.Entities;
 
 namespace MoodPickup.Api.DTOs.Orders;
@@ -14,6 +15,16 @@ public sealed record CreateOrderItemRequest(
     IReadOnlyList<Guid> OptionValueIds,
     int Quantity,
     string? Comment);
+
+public sealed record PickupSlotsDto(
+    bool SupportsAsap,
+    DateOnly Date,
+    int IntervalMinutes,
+    IReadOnlyList<PickupSlotDto> Slots);
+
+public sealed record PickupSlotDto(
+    string Label,
+    DateTimeOffset StartsAt);
 
 public sealed class OrderListQuery : Menu.PaginationQuery
 {
@@ -48,7 +59,10 @@ public sealed record OrderSummaryDto(
     DateTimeOffset? ReadyAt,
     DateTimeOffset? CompletedAt,
     bool PaymentReceived,
-    PaymentMethodUsed? PaymentMethodUsed);
+    PaymentMethodUsed? PaymentMethodUsed,
+    PaymentStatus? OnlinePaymentStatus = null,
+    DateTimeOffset? PaidAt = null,
+    DateTimeOffset? RefundedAt = null);
 
 public sealed record OrderDetailDto(
     Guid Id,
@@ -74,7 +88,9 @@ public sealed record OrderDetailDto(
     PaymentMethodUsed? PaymentMethodUsed,
     DateTimeOffset? PaymentReceivedAt,
     IReadOnlyList<OrderStatusHistoryDto> StatusHistory,
-    IReadOnlyList<OrderItemDto> Items);
+    IReadOnlyList<OrderItemDto> Items,
+    CustomerPaymentDto? Payment = null,
+    PaymentLaunchResponse? PaymentLaunch = null);
 
 public sealed record OrderRealtimeEventDto(
     Guid EventId,
@@ -88,7 +104,11 @@ public sealed record OrderRealtimeEventDto(
     DateTimeOffset? ReadyAt,
     DateTimeOffset? CompletedAt,
     bool PaymentReceived,
-    PaymentMethodUsed? PaymentMethodUsed);
+    PaymentMethodUsed? PaymentMethodUsed,
+    Guid? PaymentId = null,
+    PaymentStatus? PaymentStatus = null,
+    DateTimeOffset? PaidAt = null,
+    DateTimeOffset? RefundedAt = null);
 
 public sealed record OrderStatusHistoryDto(
     OrderStatus? OldStatus,

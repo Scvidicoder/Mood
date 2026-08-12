@@ -20,7 +20,7 @@ public sealed class AuditLogQuery : PaginationQuery
 public sealed record AuditLogListItemDto(
     Guid Id,
     DateTimeOffset Timestamp,
-    Guid EmployeeId,
+    Guid? EmployeeId,
     string EmployeeName,
     string ActionType,
     string EntityType,
@@ -31,7 +31,7 @@ public sealed record AuditLogListItemDto(
 public sealed record AuditLogDetailDto(
     Guid Id,
     DateTimeOffset Timestamp,
-    Guid EmployeeId,
+    Guid? EmployeeId,
     string EmployeeName,
     string ActionType,
     string EntityType,

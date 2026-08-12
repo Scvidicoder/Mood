@@ -312,10 +312,12 @@ concurrency failures leave no partial orders. The public API exposes only
 customer-owned records; another customer's ID resolves as `404`.
 
 `CheckoutOptions` is a validated, monitor-backed operational configuration:
-currency `TJS`, time zone `Asia/Dushanbe`, hours `10:00-22:00`, a fixed
-four-hour scheduling window, and 15-minute intervals by default. Replacing its
-configuration changes checkout validation without an API contract change. A
-staff configuration UI is intentionally outside this sprint.
+currency `TJS`, time zone `Asia/Dushanbe`, hours `10:00-22:00`, and 15-minute
+intervals by default. `OrderService` generates today's available slots from the
+next future interval through 30 minutes before closing and applies the same
+boundary during checkout validation. Replacing operational hours changes slot
+generation and validation without a frontend business-rule copy. A staff
+configuration UI is intentionally outside this sprint.
 
 ### Staff and kitchen workflow with real-time updates
 
@@ -450,9 +452,19 @@ The backend intentionally does not use:
 Business logic belongs in services, controllers remain thin, DTOs cross API
 boundaries, and asynchronous APIs accept cancellation tokens where relevant.
 
+## Sprint 4.1 payment boundary
+
+`IPaymentProvider` isolates provider launch, status verification, and the
+future full-refund operation. `AlifPaymentProvider` implements only official
+WebCheckout form launch and `/checktxn`; its refund method fails explicitly
+without network activity until Alif confirms the cancellation contract.
+`PaymentService` owns persistence, state transitions, idempotency, audit, and
+SignalR. Controllers remain thin and the existing one-project MVC structure is
+unchanged.
+
 ## Future evolution
 
-Later work can add persisted notification history, payment providers, refunds,
+Later work can add persisted notification history, more payment providers, official refunds,
 discounts, delivery, cloud media storage,
 responsive image derivatives, and full-text search without replacing the
 current order API contract or local cart selection model.

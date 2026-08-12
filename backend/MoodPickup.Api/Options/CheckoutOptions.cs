@@ -12,7 +12,5 @@ public sealed class CheckoutOptions
 
     public string ClosingTime { get; init; } = "22:00";
 
-    public int SchedulingWindowHours { get; init; } = 4;
-
     public int PickupIntervalMinutes { get; init; } = 15;
 }

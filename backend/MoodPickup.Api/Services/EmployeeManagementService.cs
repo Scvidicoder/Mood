@@ -479,7 +479,7 @@ public sealed class EmployeeManagementService(
                 log.Id,
                 log.CreatedAt,
                 log.EmployeeId,
-                log.Employee.FullName,
+                log.Employee == null ? "System" : log.Employee.FullName,
                 log.ActionType,
                 log.EntityType,
                 log.EntityId,

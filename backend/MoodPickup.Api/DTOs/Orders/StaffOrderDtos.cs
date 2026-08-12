@@ -1,3 +1,4 @@
+using MoodPickup.Api.DTOs.Payments;
 using MoodPickup.Api.Entities;
 
 namespace MoodPickup.Api.DTOs.Orders;
@@ -27,7 +28,8 @@ public sealed record StaffOrderSummaryDto(
     bool PaymentReceived,
     PaymentMethodUsed? PaymentMethodUsed,
     int ItemQuantity,
-    Guid RowVersion);
+    Guid RowVersion,
+    PaymentStatus? OnlinePaymentStatus = null);
 
 public sealed record StaffOrderDetailDto(
     Guid Id,
@@ -55,7 +57,8 @@ public sealed record StaffOrderDetailDto(
     PaymentMethodUsed? PaymentMethodUsed,
     Guid RowVersion,
     IReadOnlyList<OrderStatusHistoryDto> StatusHistory,
-    IReadOnlyList<OrderItemDto> Items);
+    IReadOnlyList<OrderItemDto> Items,
+    StaffPaymentDto? Payment = null);
 
 public sealed record ConfirmOrderRequest(
     DateTimeOffset EstimatedReadyTime,

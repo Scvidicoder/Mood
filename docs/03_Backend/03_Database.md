@@ -393,6 +393,33 @@ UPDATE ... RETURNING` inside the same serializable transaction as the order.
 This creates unique, daily sequential customer-facing order numbers while the
 GUID remains the primary key.
 
+### `Payments`
+
+- `Id`, unique `OrderId`
+- `Provider`, unique `ProviderOrderId`, nullable unique `ProviderTransactionId`
+- `Status` (`Pending`, `Paid`, `Failed`, `Cancelled`, `RefundRequired`,
+  `RefundPending`, `Refunded`, or `ReconciliationRequired`)
+- positive `Amount`, three-letter uppercase `Currency`
+- `CreatedAt`, `UpdatedAt`, nullable `PaidAt`, `RefundedAt`, `LastVerifiedAt`
+- nullable business-safe `FailureReason`
+- GUID concurrency `RowVersion`
+
+The one-to-one payment is the authority for online status. Legacy order payment
+fields remain synchronized for existing UI/workflow compatibility but cannot
+make an online order paid independently.
+
+### `PaymentAttempts`
+
+Each launch records an incrementing attempt number, provider reference/status,
+and JSON request/response snapshots. Snapshots deliberately omit passwords,
+HMAC tokens, callback account data, and customer-facing form fields.
+
+### `PaymentWebhookEvents`
+
+Stores provider, deterministic event identifier, payload hash, received/
+processed timestamps, and a safe processing result. Unique provider/event
+identity makes duplicate callbacks idempotent without retaining the raw payload.
+
 ## Relationships and delete behavior
 
 | Relationship | Cardinality | Physical delete behavior |
@@ -413,6 +440,8 @@ GUID remains the primary key.
 | Employee to OrderStatusHistory | one-to-many | `Restrict` |
 | Order to OrderItem | one-to-many | `Cascade` |
 | OrderItem to OrderItemOption | one-to-many | `Cascade` |
+| Order to Payment | one-to-one | `Cascade` |
+| Payment to PaymentAttempt | one-to-many | `Cascade` |
 
 Menu records are not physically cascade-deleted. Existing Sprint 2 cascades
 for authentication-owned refresh tokens and employee-role joins are unchanged.
@@ -450,6 +479,17 @@ option-group assignments, and option-value assignments.
 - `OrderItems(OrderId)`
 - `OrderItemOptions(OrderItemId, DisplayOrder)`
 - `OrderStatusHistory(OrderId, Timestamp)`
+
+### Payment indexes
+
+- unique `Payments(OrderId)`
+- unique `Payments(Provider, ProviderOrderId)`
+- unique filtered `Payments(Provider, ProviderTransactionId)`
+- `Payments(Status, UpdatedAt)`
+- unique `PaymentAttempts(PaymentId, AttemptNumber)`
+- unique `PaymentAttempts(ProviderReference)`
+- unique `PaymentWebhookEvents(Provider, EventIdentifier)`
+- `PaymentWebhookEvents(ReceivedAt, Id)`
 
 ### Unique indexes
 
@@ -512,7 +552,7 @@ PostgreSQL-safe and can later map to the documented API `rowVersion` string
 without using SQL Server `rowversion` or exposing PostgreSQL `xmin`.
 
 Concurrency is enabled for `Customer`, `Employee`, `Category`, `Product`, `OptionGroup`,
-`OptionValue`, `ProductOptionGroup`, `ProductOptionValue`, and `Order`. Checkout also uses a
+`OptionValue`, `ProductOptionGroup`, `ProductOptionValue`, `Order`, and `Payment`. Checkout also uses a
 serializable PostgreSQL transaction to reject a conflicting menu change without
 leaving partial order data.
 
@@ -549,6 +589,8 @@ run in Testing or Production.
 - `20260811073656_Sprint38KitchenWorkflow`
 - `20260811084037_Sprint39CustomerProfileOrderTracking`
 - `20260811092805_Sprint40EmployeeManagement`
+- `20260811103733_Sprint401EmployeePermissionOverrides`
+- `20260811113115_Sprint41OnlinePayments`
 
 The Sprint 3.8 migration works on a clean database and over Sprint 3.7. During
 upgrade it marks existing `Online` orders paid and backfills one baseline
@@ -565,3 +607,10 @@ preserves every employee and role assignment, adds nullable `LastLoginAt`, and
 backfills independent nonzero random `RowVersion` and `SessionVersion` values
 for all existing employees. The existing seeded Administrator and historical
 employee/audit/order foreign keys remain unchanged.
+
+The Sprint 4.1 migration works on a clean database and over Sprint 4.0.1. It
+adds payment, attempt, and webhook idempotency tables and makes audit
+`EmployeeId` nullable so authenticated employees and provider/system actions
+share the existing audit stream without impersonation. Existing online orders
+are backfilled as paid `Legacy` payments so their historical pre-provider
+assumption remains explicit and is never misrepresented as an Alif transaction.

@@ -79,7 +79,7 @@ public sealed class EmployeeActionQuery : PaginationQuery
 public sealed record EmployeeActionListItemDto(
     Guid Id,
     DateTimeOffset Timestamp,
-    Guid ActingEmployeeId,
+    Guid? ActingEmployeeId,
     string ActingEmployeeName,
     string ActionType,
     string EntityType,

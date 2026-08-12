@@ -36,7 +36,13 @@ export function ApplicationLayout() {
               to="/cart"
             >
               <span>Cart</span>
-              <strong aria-hidden="true">{cartQuantity}</strong>
+              <strong
+                aria-hidden="true"
+                className="customer-cart-count"
+                key={cartQuantity}
+              >
+                {cartQuantity}
+              </strong>
             </NavLink>
             {session?.accountType === "customer" ? (
               <>

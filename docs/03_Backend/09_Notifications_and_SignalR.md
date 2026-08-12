@@ -136,6 +136,10 @@ rejection reason, and payment state. They contain no employee identity.
 Customer and staff clients reconnect automatically, invalidate affected query
 caches after reconnect, and ignore duplicate event IDs. Their HTTP polling is
 disabled while SignalR is connected and runs only as a disconnected fallback.
+
+Sprint 4.1 also emits `RefundStatusChanged`. Payment-capable payloads include
+`PaymentId`, business-safe `PaymentStatus`, `PaidAt`, and `RefundedAt`; they do
+not contain Alif keys, passwords, form tokens, callback tokens, or account data.
 Persisted notification inboxes, Telegram order messages, browser notifications,
 and guaranteed outbox delivery remain future work.
 

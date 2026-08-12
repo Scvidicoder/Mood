@@ -13,10 +13,22 @@ import { cartLine } from "./cartTestFixtures";
 
 const mocks = vi.hoisted(() => ({
   createOrder: vi.fn(),
+  getPickupSlots: vi.fn(),
+  getProfile: vi.fn(),
+  launchHostedPayment: vi.fn(),
 }));
 
 vi.mock("../api/orders", () => ({
   createOrder: mocks.createOrder,
+  getPickupSlots: mocks.getPickupSlots,
+}));
+
+vi.mock("../api/profile", () => ({
+  getProfile: mocks.getProfile,
+}));
+
+vi.mock("../features/payments/launchHostedPayment", () => ({
+  launchHostedPayment: mocks.launchHostedPayment,
 }));
 
 vi.mock("../features/cart/useCartRevalidation", () => ({
@@ -29,6 +41,22 @@ vi.mock("../features/cart/useCartRevalidation", () => ({
 describe("customer checkout", () => {
   beforeEach(() => {
     mocks.createOrder.mockReset();
+    mocks.getPickupSlots.mockReset();
+    mocks.getPickupSlots.mockResolvedValue({
+      supportsAsap: true,
+      date: "2026-08-12",
+      intervalMinutes: 15,
+      slots: [
+        { label: "14:15", startsAt: "2026-08-12T14:15:00+05:00" },
+        { label: "14:30", startsAt: "2026-08-12T14:30:00+05:00" },
+      ],
+    });
+    mocks.getProfile.mockReset();
+    mocks.getProfile.mockResolvedValue({
+      name: "Amina",
+      phoneNumber: "+992900000001",
+    });
+    mocks.launchHostedPayment.mockReset();
     window.localStorage.clear();
   });
 
@@ -43,7 +71,7 @@ describe("customer checkout", () => {
       screen.getByRole("textbox", { name: /Comment for the café/i }),
       "No sugar, please",
     );
-    await user.click(screen.getByRole("button", { name: "Create order" }));
+    await user.click(screen.getByRole("button", { name: "Place Order" }));
 
     expect(await screen.findByRole("heading", { name: "Order success route" })).toBeVisible();
     expect(mocks.createOrder.mock.calls[0][0]).toEqual({
@@ -78,23 +106,57 @@ describe("customer checkout", () => {
     );
     renderCheckout(store);
 
-    await user.click(screen.getByRole("button", { name: "Create order" }));
+    await user.click(screen.getByRole("button", { name: "Place Order" }));
 
     expect(await screen.findByText("One selected option is no longer available.")).toBeVisible();
     expect(store.getState().cart.items).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Create order" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
   });
 
-  it("requires a requested time when scheduled pickup is selected", async () => {
+  it("launches Alif with the ephemeral form contract and does not navigate locally", async () => {
+    const user = userEvent.setup();
+    const store = createStoreWithLine();
+    const paymentLaunch = {
+      paymentId: "payment-1",
+      actionUrl: "https://test-web.alif.tj/",
+      method: "POST" as const,
+      formFields: {
+        key: "44444444",
+        token: "signed-per-payment-token",
+        orderId: "MPpayment1",
+        amount: "24.00",
+      },
+    };
+    mocks.createOrder.mockResolvedValue({
+      ...createdOrder(),
+      paymentMethod: "Online",
+      paymentLaunch,
+    });
+    renderCheckout(store);
+
+    await user.click(screen.getByRole("radio", { name: /Online payment/i }));
+    await user.click(screen.getByRole("button", { name: "Place Order" }));
+
+    expect(mocks.launchHostedPayment).toHaveBeenCalledWith(paymentLaunch);
+    expect(screen.queryByRole("heading", { name: "Order success route" })).not.toBeInTheDocument();
+    expect(store.getState().cart.items).toEqual([]);
+    expect(window.localStorage.getItem(CART_STORAGE_KEY)).toBeNull();
+  });
+
+  it("submits the selected server-generated pickup time", async () => {
     const user = userEvent.setup();
     mocks.createOrder.mockResolvedValue(createdOrder());
     renderCheckout(createStoreWithLine());
 
-    await user.click(screen.getByRole("radio", { name: /Schedule a pickup/i }));
-    await user.click(screen.getByRole("button", { name: "Create order" }));
+    await user.click(await screen.findByRole("button", { name: "14:15" }));
+    await user.click(screen.getByRole("button", { name: "Place Order" }));
 
-    expect(await screen.findByText("Choose a requested pickup time.")).toBeVisible();
-    expect(mocks.createOrder).not.toHaveBeenCalled();
+    expect(mocks.createOrder.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        pickupMode: "Scheduled",
+        requestedPickupTime: "2026-08-12T14:15:00+05:00",
+      }),
+    );
   });
 });
 

@@ -40,6 +40,7 @@ public sealed class PostgresOrderApiTests(PostgresMoodPickupApiFactory factory)
             dbContext,
             new CustomerContext(customer.Id),
             new MenuConfigurationValidator(),
+            scope.ServiceProvider.GetRequiredService<IPaymentService>(),
             scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CheckoutOptions>>(),
             factory.TimeProvider);
 

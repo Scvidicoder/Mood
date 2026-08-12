@@ -71,6 +71,16 @@ describe("customer order SignalR updates", () => {
     }));
     expect(client.getQueryData<OrderDetail>(["orders", "order-1"])?.status)
       .toBe("Preparing");
+
+    act(() => signalR.handlers.RefundStatusChanged({
+      ...event,
+      eventId: "event-3",
+      status: "Rejected",
+      paymentId: "payment-1",
+      paymentStatus: "RefundRequired",
+    }));
+    expect(client.getQueryData<OrderDetail>(["orders", "order-1"])?.payment?.status)
+      .toBe("RefundRequired");
   });
 });
 
@@ -92,6 +102,14 @@ function pendingOrder(): OrderDetail {
     currency: "TJS",
     createdAt: "2026-08-11T05:00:00.000Z",
     paymentReceived: false,
+    payment: {
+      id: "payment-1",
+      orderId: "order-1",
+      status: "Paid",
+      amount: 24,
+      currency: "TJS",
+      createdAt: "2026-08-11T05:00:00.000Z",
+    },
     statusHistory: [],
     items: [],
   };

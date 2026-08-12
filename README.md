@@ -1,7 +1,7 @@
 # Mood Pickup
 
 Mood Pickup is a pickup-ordering platform for Mood Dushanbe. The current
-foundation includes Sprint 4.0 administrator employee management, the Sprint
+foundation includes Sprint 4.1 Alif online payments, Sprint 4.0 administrator employee management, the Sprint
 3.9 customer cabinet, the Sprint 3.8 kitchen workflow, and real Telegram
 customer authentication:
 
@@ -48,6 +48,9 @@ customer authentication:
   details, with Current, Updated, Needs attention, and Unavailable guidance;
 - customer-only validated checkout with configured pickup scheduling and
   payment-method selection;
+- Alif WebCheckout form-POST launch, authenticated/idempotent callbacks,
+  signed status verification, persistent payment attempts/webhook events,
+  customer/staff payment state, and SignalR payment/refund updates;
 - immutable PostgreSQL order, item, and selected-option snapshots with unique
   daily human-readable order numbers;
 - customer order creation, owned-order retrieval, and newest-first paginated
@@ -76,9 +79,12 @@ customer authentication:
 - Docker Compose local orchestration with persistent PostgreSQL and media
   volumes.
 
-Backend cart storage, online payment gateways, refunds, and persisted
-multi-channel notifications remain outside the current scope. Online checkout
-is treated as already paid; pay-on-pickup supports audited Cash/Card receipt.
+Backend cart storage, real Alif refunds, and persisted multi-channel
+notifications remain outside the current scope. Online checkout remains
+pending until a signed callback or signed status response confirms payment;
+pay-on-pickup supports audited Cash/Card receipt. If a paid order is rejected,
+the payment is marked `RefundRequired` without sending an undocumented provider
+request or claiming that a refund completed.
 The cart is an anonymous device-local draft and contains no trusted commercial
 truth; checkout recalculates it from the database before persisting an order.
 
@@ -103,7 +109,7 @@ fallback and Sprint 2 explicitly prohibits upgrading to .NET 9.
 ## Full startup with Docker Compose
 
 ```powershell
-Copy-Item  .env
+Copy-Item .env.example .env
 docker compose up --build
 ```
 
@@ -118,6 +124,25 @@ Password: ChangeThisDev1!
 
 Change these values in `.env`. Production credentials and cryptographic keys
 must always come from secret configuration.
+
+Online payments use the Development provider locally by default:
+
+```text
+PAYMENT_PROVIDER=Development
+```
+
+Creating an Online order redirects the customer to `/dev/payment/{paymentId}`.
+The minimal simulator can set the real payment to Success, Failed, Cancelled,
+or Pending through Development-only API endpoints. These transitions reuse the
+normal payment state machine, audit records, SignalR updates, and payment result
+page. The provider and its endpoints cannot run outside the Development
+environment.
+
+To use Alif instead, set `PAYMENT_PROVIDER=Alif`, enable Alif, and configure
+`ALIF_KEY`, `ALIF_PASSWORD`, the public HTTPS `ALIF_CALLBACK_URL`, and the
+frontend `ALIF_RETURN_URL`. The browser receives only the public merchant key
+and a per-payment HMAC token for an immediate in-memory POST; it never receives
+the Alif password and does not persist or log the launch fields.
 
 The development menu contains Coffee, Tea, Cold Drinks, Breakfast, and
 Desserts with a small configurable sample. It is not the official current Mood
@@ -196,6 +221,7 @@ the in-memory cart usable and show a non-blocking warning.
 | Local cart | <http://localhost:5173/cart> |
 | Checkout (customer) | <http://localhost:5173/checkout> |
 | Order success (customer) | `http://localhost:5173/order-success/{id}` |
+| Payment result (customer) | `http://localhost:5173/payment/result?paymentId={id}` |
 | My orders (customer) | <http://localhost:5173/profile/orders> |
 | Order details (customer) | `http://localhost:5173/profile/orders/{id}` |
 | Customer login | <http://localhost:5173/login> |
@@ -233,6 +259,8 @@ the in-memory cart usable and show a non-blocking warning.
 - `20260811073656_Sprint38KitchenWorkflow`
 - `20260811084037_Sprint39CustomerProfileOrderTracking`
 - `20260811092805_Sprint40EmployeeManagement`
+- `20260811103733_Sprint401EmployeePermissionOverrides`
+- `20260811113115_Sprint41OnlinePayments`
 
 ```powershell
 dotnet ef migrations list --project backend/MoodPickup.Api --startup-project backend/MoodPickup.Api -- --environment Development

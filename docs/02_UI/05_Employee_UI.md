@@ -124,6 +124,11 @@ Highlight:
 - Failed payments or refunds
 - SignalR connection problems
 
+Sprint 4.1 order cards/details show the online provider status. Paid rejected
+orders are visibly `Refund required`; transaction reference, paid/refunded
+times, and reconciliation reason are visible in staff details. No refund action
+is offered until the official provider contract is implemented.
+
 ### 6.5 Role Awareness
 
 Employees see only cards and shortcuts related to their assigned roles.

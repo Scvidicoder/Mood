@@ -76,15 +76,23 @@ Supported payment methods:
 - Pay on Pickup
 
 ## BR-012 – Online payment
-Sprint 3.8 assumes Online orders are already paid. No payment provider is
-called and no gateway transaction is stored.
+Sprint 4.1 creates an Alif payment in `Pending` and sends the customer to the
+provider with a server-signed form POST. An order is paid only after Mood Pickup
+validates an Alif callback or a signed `/checktxn` response for the stored
+provider order, amount, transaction, and status. Browser return parameters are
+never payment authority.
 
 ## BR-013 – Refund boundary
-Refunds are outside Sprint 3.8. Cancellation or rejection does not call a
-payment provider.
+The official Alif WebCheckout refund/cancellation contract is not available in
+the approved source set. When staff reject a paid order, its payment becomes
+`RefundRequired`, remains unrefunded, and records that no provider request was
+sent. `partially_canceled` becomes `ReconciliationRequired`; it is never treated
+as a full refund. The provider abstraction reserves a full-refund operation for
+later implementation.
 
 ## BR-014 – Pickup payment
 Orders with "Pay on Pickup" cannot be completed until payment is marked as received.
+Online orders cannot be completed unless their provider payment is `Paid`.
 
 ## BR-015 – On-site payment type
 For pickup payments the employee must record:

@@ -18,6 +18,7 @@ import { Provider as ReduxProvider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HomePage } from "../pages/HomePage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage";
+import { ToastProvider } from "../components/ToastProvider";
 import { createAppStore } from "../store";
 
 const coffeeId = "11111111-1111-1111-1111-111111111111";
@@ -252,11 +253,50 @@ describe("public customer menu", () => {
     const large = screen.getByText("Large").closest("label");
     expect(within(large!).getByText("Unavailable")).toBeVisible();
     expect(within(large!).getByText("190 kcal")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Add to cart" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Add to Cart" })).toBeEnabled();
     expect(screen.getAllByText("TJS 24.00")).toHaveLength(2);
     expect(
       screen.getByRole("heading", { level: 1, name: "Cappuccino" }),
     ).toHaveFocus();
+  });
+
+  it("opens the configurator directly from the card Add action", async () => {
+    const user = userEvent.setup();
+    mockMenuFetch();
+    renderMenu();
+
+    await user.click(await screen.findByRole("button", { name: "Add" }));
+
+    expect(screen.getByRole("dialog")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Cappuccino", level: 2 }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Cappuccino", level: 1 }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Add to Cart" }));
+    expect(await screen.findByText("Cappuccino added to your cart.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("quick-adds an item with no required configuration", async () => {
+    const user = userEvent.setup();
+    const simpleDetail = { ...cappuccinoDetail, optionGroups: [] };
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/categories")) return json(categories);
+      if (url.pathname.endsWith(`/products/${cappuccinoId}`)) return json(simpleDetail);
+      if (url.pathname.endsWith("/products")) return page([cappuccino]);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    renderMenu();
+
+    await user.click(await screen.findByRole("button", { name: "Add" }));
+
+    expect(await screen.findByRole("button", { name: "✓ Added" })).toBeVisible();
+    expect(screen.getByText("Cappuccino added to your cart.")).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("replaces a broken product image with an accessible placeholder", async () => {
@@ -320,21 +360,23 @@ function renderMenu(initialEntry = "/") {
   return render(
     <ReduxProvider store={createAppStore(emptyStorage())}>
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={[initialEntry]}>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <>
-                  <HomePage />
-                  <LocationProbe />
-                  <HistoryBack />
-                </>
-              }
-            />
-            <Route path="/product/:id" element={<ProductDetailsPage />} />
-          </Routes>
-        </MemoryRouter>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[initialEntry]}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <>
+                    <HomePage />
+                    <LocationProbe />
+                    <HistoryBack />
+                  </>
+                }
+              />
+              <Route path="/product/:id" element={<ProductDetailsPage />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </QueryClientProvider>
     </ReduxProvider>,
   );

@@ -5,6 +5,9 @@ namespace MoodPickup.Api.Interfaces;
 
 public interface IOrderService
 {
+    Task<PickupSlotsDto> GetPickupSlotsAsync(
+        CancellationToken cancellationToken);
+
     Task<OrderDetailDto> CreateAsync(
         CreateOrderRequest request,
         CancellationToken cancellationToken);

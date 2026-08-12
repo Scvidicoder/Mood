@@ -14,6 +14,7 @@ public sealed class StaffOrderService(
     MoodPickupDbContext dbContext,
     ICurrentUserContext currentUser,
     IEmployeeAuditService auditService,
+    IPaymentService paymentService,
     IOrderRealtimeNotifier realtimeNotifier,
     IOptionsMonitor<CheckoutOptions> checkoutOptions,
     TimeProvider timeProvider,
@@ -41,6 +42,7 @@ public sealed class StaffOrderService(
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
             .Include(item => item.StatusHistory)
+            .Include(item => item.Payment)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw NotFound();
 
@@ -148,6 +150,9 @@ public sealed class StaffOrderService(
         order.RejectedAt = rejectedAt;
         order.RejectedByEmployeeId = employeeId;
         AddStatusHistory(order, oldStatus, employeeId, rejectedAt, reason);
+        var refundRequired = await paymentService.MarkRefundRequiredForRejectedOrderAsync(
+            order,
+            cancellationToken);
         await auditService.RecordAsync(
             "OrderRejected",
             "Order",
@@ -170,6 +175,16 @@ public sealed class StaffOrderService(
                 cancellationToken),
             order,
             cancellationToken);
+        if (refundRequired)
+        {
+            await NotifySafelyAsync(
+                () => realtimeNotifier.RefundStatusChangedAsync(
+                    order.CustomerId,
+                    ToRealtimeEvent(order),
+                    cancellationToken),
+                order,
+                cancellationToken);
+        }
 
         return ToStaffDetail(order);
     }
@@ -249,7 +264,8 @@ public sealed class StaffOrderService(
                 order.PaymentReceived,
                 order.PaymentMethodUsed,
                 order.Items.Sum(item => item.Quantity),
-                order.RowVersion))
+                order.RowVersion,
+                order.Payment == null ? null : order.Payment.Status))
             .ToListAsync(cancellationToken);
 
         return new PagedResponse<StaffOrderSummaryDto>(
@@ -268,6 +284,7 @@ public sealed class StaffOrderService(
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
             .Include(item => item.StatusHistory)
+            .Include(item => item.Payment)
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw NotFound();
     }
@@ -346,7 +363,8 @@ public sealed class StaffOrderService(
             order.PaymentMethodUsed,
             order.RowVersion,
             OrderDtoMapper.ToStatusHistory(order),
-            OrderDtoMapper.ToItems(order));
+            OrderDtoMapper.ToItems(order),
+            order.Payment is null ? null : OrderDtoMapper.ToStaffPayment(order.Payment));
     }
 
     private OrderRealtimeEventDto ToRealtimeEvent(Order order)
@@ -363,7 +381,11 @@ public sealed class StaffOrderService(
             order.ReadyAt,
             order.CompletedAt,
             order.PaymentReceived,
-            order.PaymentMethodUsed);
+            order.PaymentMethodUsed,
+            order.Payment?.Id,
+            order.Payment?.Status,
+            order.Payment?.PaidAt,
+            order.Payment?.RefundedAt);
     }
 
     private void AddStatusHistory(

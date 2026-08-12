@@ -53,14 +53,17 @@ customer tracking that follow step 9.
 4. Review cart.
 5. Select:
    - ASAP
-   - Pickup time
+   - One backend-provided 15-minute pickup time for today
 6. Select payment method.
 7. Add optional comment.
 8. Review order.
 9. Confirm.
 
 Alternative:
-- Online payment redirects to payment provider.
+- Online payment creates a pending payment and submits an ephemeral POST form
+  to Alif WebCheckout. Alif returns the browser to `/payment/result`; that page
+  loads server state and performs bounded server-side verification while
+  SignalR supplies live updates.
 - Pay on pickup creates the order immediately.
 
 ---

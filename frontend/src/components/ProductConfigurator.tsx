@@ -1,6 +1,5 @@
 import {
   useMemo,
-  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -24,7 +23,7 @@ interface ProductConfiguratorProps {
   onSubmit: (
     selection: ProductSelection,
     result: ConfigurationResult,
-  ) => void;
+  ) => void | Promise<void>;
   submitLabel: string;
 }
 
@@ -41,7 +40,9 @@ export function ProductConfigurator({
   const [selection, setSelection] = useState(initial.selection);
   const [warnings, setWarnings] = useState(initial.warnings);
   const [interactionMessage, setInteractionMessage] = useState("");
-  const submittingRef = useRef(false);
+  const [submitState, setSubmitState] = useState<
+    "idle" | "submitting" | "done"
+  >("idle");
   const result = useMemo(
     () => validateConfiguration(product, selection, warnings),
     [product, selection, warnings],
@@ -87,15 +88,16 @@ export function ProductConfigurator({
     setInteractionMessage("");
   }
 
-  function submit() {
-    if (!result.isValid || submittingRef.current) {
+  async function submit() {
+    if (!result.isValid || submitState === "submitting") {
       return;
     }
-    submittingRef.current = true;
-    onSubmit(selection, result);
+    setSubmitState("submitting");
+    await onSubmit(selection, result);
+    setSubmitState("done");
     window.setTimeout(() => {
-      submittingRef.current = false;
-    }, 500);
+      setSubmitState("idle");
+    }, 1200);
   }
 
   const globalIssues = result.issues.filter((issue) => !issue.groupId);
@@ -143,12 +145,23 @@ export function ProductConfigurator({
           <ConfiguredMetrics product={product} result={result} />
         </div>
         <button
+          aria-label={submitLabel}
           className="button configurator-submit"
-          disabled={!result.isValid}
-          onClick={submit}
+          disabled={!result.isValid || submitState === "submitting"}
+          onClick={() => void submit()}
           type="button"
         >
-          {submitLabel}
+          {submitState === "submitting"
+            ? submitLabel.startsWith("Save")
+              ? "Saving…"
+              : "Adding…"
+            : submitState === "done" && submitLabel.startsWith("Add")
+              ? "✓ Added"
+              : `${submitLabel} • ${
+                  result.unitPriceMinor == null
+                    ? "Price unavailable"
+                    : formatMoneyMinor(result.unitPriceMinor)
+                }`}
         </button>
       </div>
 

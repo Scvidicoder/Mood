@@ -11,6 +11,7 @@ const eventNames = [
   "EstimatedReadyTimeChanged",
   "OrderReady",
   "PaymentStatusChanged",
+  "RefundStatusChanged",
   "OrderCompleted",
 ] as const;
 
@@ -42,6 +43,14 @@ export function useOrderNotifications(orderId?: string): ConnectionState {
                   completedAt: event.completedAt,
                   paymentReceived: event.paymentReceived,
                   paymentMethodUsed: event.paymentMethodUsed,
+                  payment: current.payment && event.paymentStatus
+                    ? {
+                        ...current.payment,
+                        status: event.paymentStatus,
+                        paidAt: event.paidAt,
+                        refundedAt: event.refundedAt,
+                      }
+                    : current.payment,
                 }
               : current,
         );
@@ -50,6 +59,9 @@ export function useOrderNotifications(orderId?: string): ConnectionState {
       void queryClient.invalidateQueries({ queryKey: ["orders", "mine"] });
       void queryClient.invalidateQueries({ queryKey: ["orders", event.entityId] });
       void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      if (event.paymentId) {
+        void queryClient.invalidateQueries({ queryKey: ["payments", event.paymentId] });
+      }
     };
 
     eventNames.forEach((eventName) => connection.on(eventName, handleUpdate));

@@ -72,6 +72,18 @@ public sealed class SignalROrderRealtimeNotifier(
             cancellationToken);
     }
 
+    public Task RefundStatusChangedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken)
+    {
+        return SendAsync(
+            customerId,
+            "RefundStatusChanged",
+            notification,
+            cancellationToken);
+    }
+
     public Task OrderCompletedAsync(
         Guid customerId,
         OrderRealtimeEventDto notification,

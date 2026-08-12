@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using MoodPickup.Api.Data;
 using MoodPickup.Api.DTOs.Menu;
 using MoodPickup.Api.DTOs.Orders;
+using MoodPickup.Api.DTOs.Payments;
 using MoodPickup.Api.Entities;
 using MoodPickup.Api.Infrastructure;
 using MoodPickup.Api.Interfaces;
@@ -18,10 +19,20 @@ public sealed class OrderService(
     MoodPickupDbContext dbContext,
     ICurrentUserContext currentUser,
     IMenuConfigurationValidator menuConfigurationValidator,
+    IPaymentService paymentService,
     IOptionsMonitor<CheckoutOptions> checkoutOptions,
     TimeProvider timeProvider) : IOrderService
 {
     private const decimal MaximumStoredAmount = 9_999_999_999.99m;
+
+    public Task<PickupSlotsDto> GetPickupSlotsAsync(
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var options = checkoutOptions.CurrentValue;
+        var now = timeProvider.GetUtcNow();
+        return Task.FromResult(CreatePickupSlots(options, now));
+    }
 
     public async Task<OrderDetailDto> CreateAsync(
         CreateOrderRequest request,
@@ -89,7 +100,7 @@ public sealed class OrderService(
                 DiscountTotal = 0m,
                 Total = subtotal,
                 Currency = options.Currency.ToUpperInvariant(),
-                PaymentReceived = request.PaymentMethod == PaymentMethod.Online
+                PaymentReceived = false
             };
 
             order.StatusHistory.Add(new OrderStatusHistory
@@ -145,6 +156,14 @@ public sealed class OrderService(
             }
 
             dbContext.Orders.Add(order);
+            PaymentLaunchResponse? paymentLaunch = null;
+            if (order.PaymentMethod == PaymentMethod.Online)
+            {
+                paymentLaunch = await paymentService.CreateForOrderAsync(
+                    order,
+                    cancellationToken);
+            }
+
             await dbContext.SaveChangesAsync(cancellationToken);
 
             if (transaction is not null)
@@ -152,7 +171,7 @@ public sealed class OrderService(
                 await transaction.CommitAsync(cancellationToken);
             }
 
-            return OrderDtoMapper.ToCustomerDetail(order);
+            return OrderDtoMapper.ToCustomerDetail(order, paymentLaunch);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -183,6 +202,7 @@ public sealed class OrderService(
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
             .Include(item => item.StatusHistory)
+            .Include(item => item.Payment)
             .SingleOrDefaultAsync(
                 item => item.Id == id && item.CustomerId == customerId,
                 cancellationToken)
@@ -252,7 +272,10 @@ public sealed class OrderService(
                 order.ReadyAt,
                 order.CompletedAt,
                 order.PaymentReceived,
-                order.PaymentMethodUsed))
+                order.PaymentMethodUsed,
+                order.Payment == null ? null : order.Payment.Status,
+                order.Payment == null ? null : order.Payment.PaidAt,
+                order.Payment == null ? null : order.Payment.RefundedAt))
             .ToListAsync(cancellationToken);
 
         return new PagedResponse<OrderSummaryDto>(
@@ -272,6 +295,7 @@ public sealed class OrderService(
             .Include(item => item.Items)
                 .ThenInclude(item => item.Options)
             .Include(item => item.StatusHistory)
+            .Include(item => item.Payment)
             .SingleOrDefaultAsync(
                 item => item.Id == id && item.CustomerId == customerId,
                 cancellationToken)
@@ -617,20 +641,66 @@ public sealed class OrderService(
             AddPickupError(errors, "Scheduled pickup must use a 15-minute interval.");
         }
 
-        if (requestedTime < opening || requestedTime >= closing)
+        var lastPickup = closing.AddMinutes(-30);
+        if (requestedTime < opening || requestedTime > lastPickup)
         {
             AddPickupError(
                 errors,
-                $"Scheduled pickup must be within business hours ({options.OpeningTime}-{options.ClosingTime}).");
+                $"Scheduled pickup must be between {options.OpeningTime} and {lastPickup:HH:mm} today.");
         }
 
         var requestedUtc = request.RequestedPickupTime.Value.ToUniversalTime();
-        if (requestedUtc < now || requestedUtc > now.AddHours(options.SchedulingWindowHours))
+        if (requestedUtc <= now)
         {
-            AddPickupError(errors, "Scheduled pickup must be within the next 4 hours.");
+            AddPickupError(errors, "Choose a future pickup time from the available times.");
         }
 
         return errors;
+    }
+
+    private static PickupSlotsDto CreatePickupSlots(
+        CheckoutOptions options,
+        DateTimeOffset now)
+    {
+        var timeZone = GetTimeZone(options.TimeZoneId);
+        var localNow = TimeZoneInfo.ConvertTime(now, timeZone);
+        var opening = TimeOnly.ParseExact(
+            options.OpeningTime,
+            "HH:mm",
+            CultureInfo.InvariantCulture);
+        var closing = TimeOnly.ParseExact(
+            options.ClosingTime,
+            "HH:mm",
+            CultureInfo.InvariantCulture);
+        var lastPickup = closing.AddMinutes(-30);
+        var currentMinute = localNow.Hour * 60 + localNow.Minute;
+        var nextIntervalMinute =
+            (currentMinute / options.PickupIntervalMinutes + 1) *
+            options.PickupIntervalMinutes;
+        var openingMinute = opening.Hour * 60 + opening.Minute;
+        var lastPickupMinute = lastPickup.Hour * 60 + lastPickup.Minute;
+        var firstMinute = Math.Max(openingMinute, nextIntervalMinute);
+        var slots = new List<PickupSlotDto>();
+
+        for (
+            var minute = firstMinute;
+            minute <= lastPickupMinute;
+            minute += options.PickupIntervalMinutes)
+        {
+            var localDateTime = DateTime.SpecifyKind(
+                localNow.Date.AddMinutes(minute),
+                DateTimeKind.Unspecified);
+            var startsAt = new DateTimeOffset(
+                localDateTime,
+                timeZone.GetUtcOffset(localDateTime));
+            slots.Add(new PickupSlotDto(startsAt.ToString("HH:mm"), startsAt));
+        }
+
+        return new PickupSlotsDto(
+            true,
+            DateOnly.FromDateTime(localNow.Date),
+            options.PickupIntervalMinutes,
+            slots);
     }
 
     private async Task<int> GetNextOrderSequenceAsync(

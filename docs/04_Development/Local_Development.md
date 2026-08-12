@@ -41,14 +41,13 @@ Checkout__Currency=TJS
 Checkout__TimeZoneId=Asia/Dushanbe
 Checkout__OpeningTime=10:00
 Checkout__ClosingTime=22:00
-Checkout__SchedulingWindowHours=4
 Checkout__PickupIntervalMinutes=15
 ```
 
-The scheduling window and interval are intentionally fixed by the current API
-contract. A deployment/configuration update to business hours is observed by
-checkout and staff estimated-ready-time validation without changing their HTTP
-contracts; no staff settings UI exists in Sprint 3.7.
+The 15-minute interval is fixed by the current API contract. A deployment
+configuration update to business hours is observed by pickup-slot generation,
+checkout validation, and staff estimated-ready-time validation without changing
+their HTTP contracts; no staff settings UI exists in Sprint 4.2.
 
 Real Telegram mode additionally requires:
 
@@ -117,6 +116,43 @@ Compose mounts the named `moodpickup-media` volume at `/app/uploads`. The
 backend image is prepared so its non-root application user can write there.
 `docker compose down` preserves both database and media volumes; do not add
 `--volumes` unless deletion is deliberate.
+
+### Development payment simulator
+
+Local Development uses the simulator by default:
+
+```text
+PAYMENT_PROVIDER=Development
+```
+
+Choose Online at checkout. The application creates a real `Payment` and opens
+`/dev/payment/{paymentId}`. Select Success, Failed, Cancel, or Pending; the
+Development-only endpoint calls the existing payment service and then opens
+the normal payment result page. Audit and SignalR use the same production
+payment flow. The simulator endpoints return `404` outside Development, and
+selecting the Development provider outside Development prevents startup.
+
+### Alif WebCheckout sandbox
+
+Switching from the simulator to Alif requires the provider setting plus the
+existing merchant sandbox configuration:
+
+```text
+PAYMENT_PROVIDER=Alif
+ALIF_ENABLED=true
+ALIF_ENVIRONMENT=Sandbox
+ALIF_USE_SANDBOX=true
+ALIF_KEY=<merchant key>
+ALIF_PASSWORD=<merchant password>
+ALIF_CALLBACK_URL=https://<public-host>/api/v1/payments/alif/callback
+ALIF_RETURN_URL=https://<frontend-host>/payment/result
+ALIF_GATE=km
+```
+
+Never commit the populated `.env`, print the password, or copy launch fields to
+browser storage. Without credentials, use the automated protocol-vector,
+transport-boundary, state-machine, API, and UI tests; do not claim a live Alif
+sandbox pass.
 
 Stop containers while preserving the database:
 

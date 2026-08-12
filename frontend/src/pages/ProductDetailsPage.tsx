@@ -10,6 +10,7 @@ import {
 import { getPublicProduct } from "../api/menu/publicMenu";
 import { ErrorState } from "../components/ErrorState";
 import { ProductConfigurator } from "../components/ProductConfigurator";
+import { useToast } from "../components/ToastProvider";
 import { ProductDetailsSkeleton } from "../components/PublicMenuSkeleton";
 import { PublicProductImage } from "../components/PublicProductImage";
 import { cartActions } from "../features/cart/cartSlice";
@@ -123,6 +124,7 @@ function ProductDetail({
 }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { notify } = useToast();
   const [successMessage, setSuccessMessage] = useState("");
 
   function submit(
@@ -137,6 +139,7 @@ function ProductDetail({
     }
 
     dispatch(cartActions.addConfiguredLine(line));
+    notify(`${product.name} added to your cart.`);
     setSuccessMessage(
       `${product.name} was added. You can keep browsing or review your cart.`,
     );
@@ -241,7 +244,7 @@ function ProductDetail({
         key={`${product.id}:${editLineId ?? "new"}`}
         onSubmit={submit}
         product={product}
-        submitLabel={editLineId ? "Save cart changes" : "Add to cart"}
+        submitLabel={editLineId ? "Save Changes" : "Add to Cart"}
       />
     </>
   );

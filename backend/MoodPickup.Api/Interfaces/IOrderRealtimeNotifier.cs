@@ -34,6 +34,11 @@ public interface IOrderRealtimeNotifier
         OrderRealtimeEventDto notification,
         CancellationToken cancellationToken);
 
+    Task RefundStatusChangedAsync(
+        Guid customerId,
+        OrderRealtimeEventDto notification,
+        CancellationToken cancellationToken);
+
     Task OrderCompletedAsync(
         Guid customerId,
         OrderRealtimeEventDto notification,

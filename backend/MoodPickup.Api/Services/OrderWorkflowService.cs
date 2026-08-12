@@ -323,6 +323,13 @@ public sealed class OrderWorkflowService(
                 "Pickup payment must be recorded before completion",
                 "ORDER_PAYMENT_REQUIRED");
         }
+        if (order.PaymentMethod == PaymentMethod.Online &&
+            order.Payment?.Status != PaymentStatus.Paid)
+        {
+            throw Conflict(
+                "Online payment must be confirmed before completion",
+                "ORDER_PAYMENT_REQUIRED");
+        }
 
         var employeeId = currentUser.GetRequiredEmployeeId();
         var changedAt = timeProvider.GetUtcNow();
@@ -366,6 +373,7 @@ public sealed class OrderWorkflowService(
             .Include(order => order.Items)
                 .ThenInclude(item => item.Options)
             .Include(order => order.StatusHistory)
+            .Include(order => order.Payment)
             .SingleOrDefaultAsync(order => order.Id == id, cancellationToken)
             ?? throw NotFound();
     }
@@ -476,7 +484,8 @@ public sealed class OrderWorkflowService(
             order.PaymentMethodUsed,
             order.RowVersion,
             OrderDtoMapper.ToStatusHistory(order),
-            OrderDtoMapper.ToItems(order));
+            OrderDtoMapper.ToItems(order),
+            order.Payment is null ? null : OrderDtoMapper.ToStaffPayment(order.Payment));
     }
 
     private OrderRealtimeEventDto ToRealtimeEvent(Order order)
@@ -493,7 +502,11 @@ public sealed class OrderWorkflowService(
             order.ReadyAt,
             order.CompletedAt,
             order.PaymentReceived,
-            order.PaymentMethodUsed);
+            order.PaymentMethodUsed,
+            order.Payment?.Id,
+            order.Payment?.Status,
+            order.Payment?.PaidAt,
+            order.Payment?.RefundedAt);
     }
 
     private static void EnsureVersion(Guid expected, Order order)

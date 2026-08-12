@@ -24,7 +24,8 @@ server validation, and order completion remain future work.
 - Configurable products
 - Persistent cart
 - Checkout
-- Online payment abstraction
+- Online payment abstraction and Alif WebCheckout (Sprint 4.1 delivered;
+  live sandbox acceptance awaits merchant credentials and a public callback)
 - Pay on pickup
 - Current orders
 - Order history

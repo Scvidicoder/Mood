@@ -330,6 +330,20 @@ public sealed class PostgresKitchenWorkflowApiTests(PostgresMoodPickupApiFactory
                 Timestamp = status == OrderStatus.ReadyForPickup ? Now : Now.AddMinutes(-1),
                 CorrelationId = "postgres-workflow-seed"
             });
+            if (paymentMethod == PaymentMethod.Online)
+            {
+                order.Payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    Order = order,
+                    Provider = PaymentProvider.Legacy,
+                    ProviderOrderId = $"LEGACY{order.Id:N}",
+                    Status = PaymentStatus.Paid,
+                    Amount = order.Total,
+                    Currency = order.Currency,
+                    PaidAt = Now
+                };
+            }
             db.Orders.Add(order);
             await db.SaveChangesAsync();
             return order;

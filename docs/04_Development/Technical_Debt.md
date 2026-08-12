@@ -230,8 +230,12 @@ stores `PayOnPickup` or `Online` as an intent. Sprint 3.7 adds pending-only
 customer cancellation and staff reception decisions. Sprint 3.8 adds the
 forward-only kitchen workflow, a kitchen board, Cash/Card pickup receipt,
 completion, immutable status history, and customer/staff SignalR events.
-It intentionally does not implement an online payment provider, refunds,
-persisted notifications, a separate pickup board, promotions, loyalty,
+Sprint 4.1 implements Alif WebCheckout launch, callbacks, status verification,
+and payment persistence. It intentionally does not implement the undocumented
+Alif `/cancel/standard` refund request. Paid rejected orders remain accurately
+`RefundRequired` with an audit record that no provider request was sent. Live
+sandbox acceptance also remains pending until merchant credentials and a public
+HTTPS callback are available. Persisted notifications, a separate pickup board, promotions, loyalty,
 delivery, or inventory. Each future addition needs explicit transition,
 authorization, audit, retry, and privacy rules.
 

@@ -311,6 +311,9 @@ public sealed class OrderWorkflowServiceTests
         public Task PaymentStatusChangedAsync(Guid customerId, OrderRealtimeEventDto notification, CancellationToken cancellationToken) =>
             Record("PaymentStatusChanged", customerId, notification);
 
+        public Task RefundStatusChangedAsync(Guid customerId, OrderRealtimeEventDto notification, CancellationToken cancellationToken) =>
+            Record("RefundStatusChanged", customerId, notification);
+
         public Task OrderCompletedAsync(Guid customerId, OrderRealtimeEventDto notification, CancellationToken cancellationToken) =>
             Record("OrderCompleted", customerId, notification);
 

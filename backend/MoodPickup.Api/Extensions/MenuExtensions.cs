@@ -9,7 +9,8 @@ public static class MenuExtensions
 {
     public static IServiceCollection AddMenuDomain(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var mediaOptions = configuration
             .GetRequiredSection(MediaStorageOptions.SectionName)
@@ -26,6 +27,7 @@ public static class MenuExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
         services.AddScoped<IEmployeeAuditService, EmployeeAuditService>();
+        services.AddScoped<ISystemAuditService, SystemAuditService>();
         services.AddScoped<IPublicMenuService, PublicMenuService>();
         services.AddScoped<IAdminCategoryService, AdminCategoryService>();
         services.AddScoped<IAdminProductService, AdminProductService>();
@@ -38,6 +40,14 @@ public static class MenuExtensions
         services.AddScoped<ICustomerProfileService, CustomerProfileService>();
         services.AddScoped<IStaffOrderService, StaffOrderService>();
         services.AddScoped<IOrderWorkflowService, OrderWorkflowService>();
+        services.AddSingleton<AlifSignatureService>();
+        services.AddHttpClient<AlifPaymentClient>();
+        services.AddScoped<IPaymentProvider, AlifPaymentProvider>();
+        if (environment.IsDevelopment())
+        {
+            services.AddScoped<IPaymentProvider, DevelopmentPaymentProvider>();
+        }
+        services.AddScoped<IPaymentService, PaymentService>();
         services.AddSingleton<IOrderRealtimeNotifier, SignalROrderRealtimeNotifier>();
         return services;
     }

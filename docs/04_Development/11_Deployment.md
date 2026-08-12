@@ -40,6 +40,11 @@ Backend:
 - Telegram__RegisterWebhookOnStartup
 - Telegram__DropPendingUpdatesOnRegistration
 - Telegram__UseDevelopmentSender
+- Alif__Enabled
+- Alif__Environment / Alif__UseSandbox
+- Alif__Key / Alif__Password
+- Alif__CallbackUrl / Alif__ReturnUrl
+- Alif__Gate
 - SignalR__Enabled
 - Storage__Path
 
@@ -58,7 +63,8 @@ Requirements:
 
 - automatic EF Core migrations (optional flag)
 - hot reload
-- fake payment provider
+- Alif disabled by default; optional real sandbox mode uses merchant credentials
+  and a public HTTPS callback URL
 - fake Telegram sender only when
   `Telegram__UseDevelopmentSender=true`; webhook registration disabled
 
@@ -95,6 +101,25 @@ Telegram__UseDevelopmentSender=false
 registers the webhook and secret for `message` updates, and confirms the URL
 with `getWebhookInfo`. No deployment-domain source edit or manual Telegram API
 call is required.
+
+Alif sandbox example:
+
+```text
+Alif__Enabled=true
+Alif__Environment=Sandbox
+Alif__UseSandbox=true
+Alif__Key=<merchant key>
+Alif__Password=<secret merchant password>
+Alif__CallbackUrl=https://api.example.com/api/v1/payments/alif/callback
+Alif__ReturnUrl=https://app.example.com/payment/result
+Alif__Gate=km
+```
+
+Production requires `Environment=Production`, `UseSandbox=false`, HTTPS callback
+and return URLs, and secret-manager delivery of the password. The application
+must not log launch fields, callback bodies, or status bodies. Deploying Sprint
+4.1 does not enable refund calls: the official Alif WebCheckout cancellation
+contract remains an explicit future release gate.
 
 ## Health Endpoints
 

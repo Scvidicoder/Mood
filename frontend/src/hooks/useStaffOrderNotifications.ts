@@ -11,6 +11,7 @@ const eventNames = [
   "EstimatedReadyTimeChanged",
   "OrderReady",
   "PaymentStatusChanged",
+  "RefundStatusChanged",
   "OrderCompleted",
 ] as const;
 

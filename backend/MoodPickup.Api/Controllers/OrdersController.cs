@@ -15,6 +15,16 @@ namespace MoodPickup.Api.Controllers;
 [Tags("Customer Orders")]
 public sealed class OrdersController(IOrderService orderService) : ControllerBase
 {
+    /// <summary>Returns today's server-generated pickup times.</summary>
+    [HttpGet("pickup-slots")]
+    [ProducesResponseType<PickupSlotsDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PickupSlotsDto>> GetPickupSlots(
+        CancellationToken cancellationToken)
+    {
+        return Ok(await orderService.GetPickupSlotsAsync(cancellationToken));
+    }
+
     /// <summary>Creates a customer order from a server-revalidated cart draft.</summary>
     [HttpPost]
     [ProducesResponseType<OrderDetailDto>(StatusCodes.Status201Created)]

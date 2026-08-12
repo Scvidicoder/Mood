@@ -84,7 +84,7 @@ builder.Services.AddScoped<IPasswordHasher<Employee>, PasswordHasher<Employee>>(
 builder.Services.AddMoodPickupAuthentication(
     builder.Configuration,
     builder.Environment);
-builder.Services.AddMenuDomain(builder.Configuration);
+builder.Services.AddMenuDomain(builder.Configuration, builder.Environment);
 builder.Services
     .AddSignalR()
     .AddJsonProtocol(options =>
@@ -139,6 +139,28 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy(
+        "payment-callback",
+        context => RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 180,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+    options.AddPolicy(
+        "payment-verification",
+        context => RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirst("sub")?.Value ??
+            context.Connection.RemoteIpAddress?.ToString() ??
+            "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
